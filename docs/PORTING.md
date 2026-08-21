@@ -98,12 +98,14 @@ Each step is independently useful and independently verifiable.
    shape vocabulary enums. Pure maths, now under test for the first time.
 3. **Shape model** ✅ — `Shape` plus sphere, ring, cylinder and prism, with JSON
    binding split out and the `@JsonField` metadata retained for a codec layer.
-4. **Field model: links and primitives** — the wires: follow, mirror, phase offset,
+4. **Motion model** ✅ — `Transform`, `OrbitConfig`/`OrbitConfig3D`, and the
+   `animation` and `energy` packages `LinkResolver` needs.
+5. **Field model: links and primitives** — the wires: follow, mirror, phase offset,
    radius match, orbit sync. `LinkResolver` is the substance.
-5. **Effect and visual config model** — the contract between GUI, engine and GLSL.
-6. **Rendering backend** — the first backend that actually draws.
-7. **GUI framework** — the customiser, loader-neutral.
-8. **the-virus-block-mc consumes the library.**
+6. **Effect and visual config model** — the contract between GUI, engine and GLSL.
+7. **Rendering backend** — the first backend that actually draws.
+8. **GUI framework** — the customiser, loader-neutral.
+9. **the-virus-block-mc consumes the library.**
 
 ## Note on tests
 
@@ -144,3 +146,19 @@ name rather than import.
 
 When porting the next batch, resolve the transitive closure first rather than
 trusting the import list.
+
+Doing exactly that for `Transform` paid off twice over. It bounded the batch
+honestly at 38 files rather than the whole of `visual/` — and it surfaced two files
+that are Minecraft-coupled despite sitting in a package that is otherwise clean:
+
+- **`AnchorResolver`** takes a `PlayerEntity`. It does not belong in `core` at all;
+  it belongs in `common`, and was dropped from this batch rather than mangled to fit.
+- **`Waveform`** used Minecraft's `MathHelper.sin`, a lookup-table approximation.
+  It is reimplemented on `java.lang.Math`, which is exact and marginally slower. For
+  a waveform driving visuals that difference is imperceptible, but it *is* a
+  behavioural change rather than a move, so it carries a comment saying so and the
+  tests pin the landmarks down.
+
+A third class of leftover only appears once the public JSON methods are gone:
+**private helpers that took a `JsonObject` or `JsonArray`** and were only ever
+called by them. They compile fine until their parameter type disappears.

@@ -13,7 +13,7 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 119 tests, 0 failures, on JDK 21.
+**Verified:** 127 tests, 0 failures, on JDK 21.
 
 ## M1.5 — Library surface ✅ done
 
@@ -72,6 +72,17 @@ the enums, effect records and `CellType`/`Facing`/`Axis` they depend on.
 - `core` gains JOML — pure-Java maths, the one allowed dependency class
 - Contract tests covering all four shapes uniformly, which is what catches an
   automated strip having quietly damaged one of them
+
+## M1.9 — Motion model ✅ done
+
+`Transform`, `OrbitConfig`/`OrbitConfig3D`, and the `animation` and `energy`
+packages — 48 files, the transitive closure `LinkResolver` needs.
+
+- `AnchorResolver` excluded: it takes a `PlayerEntity`, so it is genuinely
+  Minecraft-coupled and belongs in `common`
+- `Waveform.SINE` reimplemented on `java.lang.Math`, since Minecraft's
+  lookup-table `MathHelper` cannot come into core. Behavioural change, so the
+  tests pin its landmarks
 
 ## M2 — First rendering backend
 
