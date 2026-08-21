@@ -2,15 +2,14 @@ plugins {
     id("fabric-loom")
 }
 
-// Stonecutter tells us which Minecraft version this target is for; the matching
-// loader coordinates are looked up from the root gradle.properties by key, so
-// adding a Minecraft version never means editing a build script.
-val mcVersion: String = stonecutter.current.version
+// The Minecraft coordinates are looked up by version key from the root
+// gradle.properties, so adding a Minecraft version never means editing a build
+// script — only adding its mc_<version>_* block and flipping mc_version.
+val mcVersion = providers.gradleProperty("mc_version").get()
+val coreVersion = providers.gradleProperty("core_version").get()
 
 fun versioned(suffix: String): String =
     providers.gradleProperty("mc_${mcVersion.replace('.', '_')}_$suffix").get()
-
-val coreVersion: String by project
 
 dependencies {
     minecraft("com.mojang:minecraft:${versioned("minecraft")}")

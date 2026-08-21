@@ -27,13 +27,15 @@ has no Minecraft dependency at all, and its test suite runs on a bare JDK.
 
 | | |
 |---|---|
-| **Minecraft** | 26.2 (current stable), 26.3 wired but inert until release |
+| **Minecraft** | 26.2 (current stable); 26.3 prepared, retarget when it ships |
 | **Loaders** | Fabric, NeoForge |
 | **Java** | 25 for the mod, 21 for the framework core |
+| **Gradle** | 9.4.0, pinned in the committed wrapper |
 
-Multiversion is handled by Stonecutter: adding 26.3 is two lines in
-`gradle.properties`, not a branch. Version provenance and confidence levels are
-in [docs/VERSIONS.md](docs/VERSIONS.md).
+Minecraft coordinates are looked up per version from `gradle.properties`, so
+retargeting is one property change rather than a build script edit. Version
+provenance and confidence levels — including which numbers are still unverified —
+are in [docs/VERSIONS.md](docs/VERSIONS.md).
 
 ## Layout
 
@@ -47,17 +49,25 @@ docs/       architecture, roadmap, version provenance
 
 ## Building
 
+Use the wrapper; it pins Gradle 9.4.0.
+
 The core builds anywhere, with no Minecraft toolchain and no access to Minecraft
 Maven hosts:
 
 ```sh
-cd core && gradle test
+cd core && ../gradlew test
 ```
 
-The full mod needs JDK 25 and reachable Fabric/NeoForge Maven:
+The shared module needs JDK 25, but still no Minecraft Maven:
 
 ```sh
-gradle build
+./gradlew :common:build --configure-on-demand
+```
+
+The loader modules additionally need reachable Fabric/NeoForge Maven:
+
+```sh
+./gradlew build
 ```
 
 ## How it works
@@ -103,9 +113,13 @@ Not built yet:
 - Datapack loading — bindings are programmatic for now (M3)
 - The demo dimensions (M4)
 
-The Minecraft-layer build scripts have **not** been resolved against live Maven;
-the environment this was bootstrapped in could not reach any Minecraft Maven host.
-CI's Minecraft job is advisory until that first green run pins the version table.
+Verified beyond the core: the root build, the composite substitution of `core`
+into `common`, and `:common:build` itself all run clean.
+
+**The Fabric and NeoForge modules have never been resolved against live Maven** —
+the environment this was bootstrapped in could reach no Minecraft Maven host, so
+`fabric_loom_version` and `mc_26_2_neoforge` in particular are unverified guesses.
+CI's `loaders` job is advisory until its first green run pins them.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 

@@ -1,15 +1,17 @@
 // Root build. Per-target configuration lives in the loader subprojects; this file
 // only carries what is genuinely common to all of them.
 //
-// Every version referenced here resolves from gradle.properties — see the header
-// there for why the values are marked unverified until the first networked run.
+// Properties are read through `providers.gradleProperty` rather than the `by
+// project` delegate, because the delegate keys off the *variable name* and these
+// are snake_case in gradle.properties, per Minecraft modding convention.
 
 plugins {
     base
 }
 
-val modGroup: String by project
-val modVersion: String by project
+val modGroup = providers.gradleProperty("mod_group").get()
+val modVersion = providers.gradleProperty("mod_version").get()
+val javaVersion = providers.gradleProperty("java_version").get().toInt()
 
 allprojects {
     group = modGroup
@@ -19,11 +21,9 @@ allprojects {
 subprojects {
     apply(plugin = "java")
 
-    val javaVersion: String by project
-
     extensions.configure<JavaPluginExtension> {
         toolchain {
-            languageVersion = JavaLanguageVersion.of(javaVersion.toInt())
+            languageVersion = JavaLanguageVersion.of(javaVersion)
         }
     }
 

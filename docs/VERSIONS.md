@@ -51,23 +51,42 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Key | Value | Status | Source |
 |---|---|---|---|
-| `stonecutter_version` | `0.9.7` | Reported | Gradle Plugin Portal listing, published 2026-07-19 |
-| `fabric_loom_version` | `1.15-SNAPSHOT` | Reported | Fabric's 26.1 announcement ("use Loom 1.15 and Gradle 9.4.0") |
+| `fabric_loom_version` | `1.15-SNAPSHOT` | **Low confidence** | Fabric's 26.1 announcement says "Loom 1.15"; the exact artifact suffix is a guess. Local resolution is impossible here (host unreachable), so CI settles it. |
 | `moddevgradle_version` | `2.0.141` | Reported | Gradle Plugin Portal listing for `net.neoforged.moddev` |
-| `gradle_version` | `9.4.0` | Reported | Fabric's 26.1 announcement |
+| `gradle_version` | `9.4.0` | **Verified** | Pinned in the committed wrapper; confirmed present in the Gradle version index and downloaded successfully. |
 | `java_version` | `25` | Reported | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
 | `mc_26_2_fabric_loader` | `0.18.4` | Reported | Fabric's 26.1 announcement, latest stable loader |
 | `mc_26_2_fabric_api` | `0.157.0+26.2` | Reported | Modrinth version listing, published 2026-08-10 |
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Low confidence** | Derived from the documented `26.2.0.x` prefix scheme and a build number that was already stale when read. Expect to bump this. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
 
-## Adding 26.3 when it releases
+## Retargeting to 26.3 when it releases
 
 1. Pin `mc_26_3_fabric_api` and `mc_26_3_neoforge` to real versions.
-2. Add `26.3` to `active_versions`.
+2. Set `mc_version=26.3`.
 
-That is the whole change. Stonecutter derives the extra targets, and the loader
-build scripts look their coordinates up by key. No build script edits.
+That is the whole change — the loader build scripts look their coordinates up as
+`mc_<version>_*`, so no build script is edited.
+
+## On building several versions at once
+
+The property layout above is already per-version, which is the groundwork. What is
+*not* wired is a preprocessor to build 26.2 and 26.3 **simultaneously**.
+
+[Stonecutter](https://plugins.gradle.org/plugin/dev.kikugie.stonecutter) 0.9.7 is
+the intended mechanism, and was attempted during bootstrap. It was backed out for
+two reasons, both worth stating plainly:
+
+1. **26.3 does not exist yet.** Today's matrix has exactly one entry, so the
+   preprocessor would add real complexity for no present benefit.
+2. **It could not be verified.** Stonecutter composes version subprojects under
+   `versions/`, which is a different layout from the `common`/`fabric`/`neoforge`
+   split; reconciling the two needs a working loader build to test against, and no
+   loader dependency was resolvable in the bootstrap environment.
+
+Wiring it is a deliberate task for when 26.3 ships and the loader build is green —
+not something to leave half-connected in the meantime. Note Stonecutter requires
+Gradle 9 or newer, which the pinned wrapper already satisfies.
 
 ## Why not 1.21.x as well
 
@@ -78,5 +97,5 @@ whole mappings apparatus and a second set of rendering assumptions. That is a
 real project, not a version bump, and it should not slow down getting the
 framework right on current versions first.
 
-If it is wanted later, the Stonecutter matrix is the mechanism, and the
-`EffectBackend` seam already isolates most of what would differ.
+If it is wanted later, a preprocessor is the mechanism, and the `EffectBackend`
+seam already isolates most of what would differ.

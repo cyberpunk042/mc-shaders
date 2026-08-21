@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: ci-${{ github.ref }}
+  group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
   # ───────────────────────────────────────────────────────────────────────────
-  # The framework core: pure Java, no Minecraft, no network beyond Maven Central.
-  # This job is authoritative — it must stay green.
+  # The framework core: pure Java, no Minecraft, nothing beyond Maven Central.
+  # Authoritative — it must stay green.
   # ───────────────────────────────────────────────────────────────────────────
   core:
     name: Core (pure Java)
@@ -30,11 +30,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      # The core is a separate build, so it runs from its own directory using the
+      # repository's single pinned wrapper.
       - name: Test
         working-directory: core
-        run: gradle test --no-daemon --console=plain
+        run: ../gradlew test --console=plain
 
-      - name: Publish test report
+      - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -43,18 +45,41 @@ jobs:
           if-no-files-found: warn
 
   # ───────────────────────────────────────────────────────────────────────────
-  # The Minecraft layer. ADVISORY until the version table is pinned.
-  #
-  # Nothing here was resolved in the environment that bootstrapped the repo —
-  # every Minecraft Maven host was unreachable and only JDK 21 was available.
-  # This job exists precisely to find out which numbers in gradle.properties are
-  # wrong; see docs/VERSIONS.md. It does not gate the build while that is true.
-  #
-  # Flip continue-on-error to false once it has passed once. That is the moment
-  # the version table graduates from "reported" to "verified".
+  # The shared Minecraft-facing module. It depends only on the core and Maven
+  # Central — no Minecraft Maven — so it is also authoritative. This is what
+  # proves the composite substitution and the JDK 25 toolchain actually work.
   # ───────────────────────────────────────────────────────────────────────────
-  minecraft:
-    name: Minecraft layer (advisory)
+  common:
+    name: Common (JDK 25)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew :common:build --configure-on-demand --console=plain
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The loader modules. ADVISORY until the version table is pinned.
+  #
+  # These are the only parts that need the Minecraft Maven hosts, and none of
+  # them were resolvable in the environment that bootstrapped this repository.
+  # This job exists to find out which coordinates in gradle.properties are wrong
+  # — see docs/VERSIONS.md. It does not gate the build while that is true.
+  #
+  # Flip continue-on-error to false once it has passed. That is the moment the
+  # version table graduates from "reported" to "verified".
+  # ───────────────────────────────────────────────────────────────────────────
+  loaders:
+    name: Fabric + NeoForge (advisory)
     runs-on: ubuntu-latest
     continue-on-error: true
     steps:
@@ -70,4 +95,4 @@ jobs:
         uses: gradle/actions/setup-gradle@v4
 
       - name: Build
-        run: gradle build --no-daemon --console=plain --stacktrace
+        run: ./gradlew build --console=plain

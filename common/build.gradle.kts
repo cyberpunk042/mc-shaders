@@ -8,7 +8,7 @@ plugins {
     `java-library`
 }
 
-val coreVersion: String by project
+val coreVersion = providers.gradleProperty("core_version").get()
 
 dependencies {
     // The version is nominal: `includeBuild("core")` substitutes this coordinate

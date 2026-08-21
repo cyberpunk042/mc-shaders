@@ -73,7 +73,12 @@ selection is invisible to pack authors.
 
 ## Cross-cutting, ongoing
 
-- **Pin the versions.** `mc_26_2_neoforge` in particular is low-confidence — see
-  [VERSIONS.md](VERSIONS.md). The first green CI run settles the whole table.
+- **Pin the versions.** `mc_26_2_neoforge` and `fabric_loom_version` are
+  low-confidence — see [VERSIONS.md](VERSIONS.md). The first green run of the
+  advisory `loaders` CI job settles the table, and is the trigger to make that job
+  blocking.
+- **Wire multiversion** once 26.3 ships and the loader build is green. The
+  per-version property layout is already in place; see VERSIONS.md for why the
+  preprocessor was deliberately backed out rather than left half-connected.
 - Keep `core/` free of Minecraft imports. It is the reason the framework is
   testable at all; the first convenience import that breaks it costs that.

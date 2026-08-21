@@ -2,12 +2,11 @@ plugins {
     id("net.neoforged.moddev")
 }
 
-val mcVersion: String = stonecutter.current.version
+val mcVersion = providers.gradleProperty("mc_version").get()
+val coreVersion = providers.gradleProperty("core_version").get()
 
 fun versioned(suffix: String): String =
     providers.gradleProperty("mc_${mcVersion.replace('.', '_')}_$suffix").get()
-
-val coreVersion: String by project
 
 neoForge {
     version = versioned("neoforge")
