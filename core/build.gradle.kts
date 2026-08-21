@@ -39,11 +39,29 @@ tasks.test {
     }
 }
 
+// Javadoc is published because this is a library other people read against.
+java {
+    withJavadocJar()
+}
+
+tasks.javadoc {
+    // No `links(...)` to an external JDK javadoc: it makes the build reach the
+    // network at build time, so an unreachable docs host fails the build for a
+    // purely cosmetic cross-link.
+    (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+}
+
 publishing {
     publications {
         create<MavenPublication>("maven") {
             from(components["java"])
             artifactId = "mcshaders-core"
+            pom {
+                name = "MC Shaders Core"
+                description = "Backend-neutral shader effect framework. Pure Java, no Minecraft dependency."
+            }
         }
     }
 }
+
+apply(from = rootDir.parentFile.resolve("gradle/publishing.gradle.kts"))

@@ -27,8 +27,7 @@ class BindingTest {
     private static final DimensionId NETHER = DimensionId.minecraft("the_nether");
 
     private static EffectLayer layer(String id, double weight) {
-        return new EffectLayer(id, EffectKind.COLOR_GRADE, EffectParams.empty(),
-                net.cyberpunk042.mcshaders.core.effect.BlendMode.ALPHA, weight, 0);
+        return EffectLayer.builder(id).kind(EffectKind.COLOR_GRADE).weight(weight).build();
     }
 
     @Nested

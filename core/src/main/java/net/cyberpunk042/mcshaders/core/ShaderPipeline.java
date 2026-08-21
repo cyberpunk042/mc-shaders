@@ -1,9 +1,11 @@
 package net.cyberpunk042.mcshaders.core;
 
 import java.util.Objects;
+import net.cyberpunk042.mcshaders.core.api.Stable;
 import net.cyberpunk042.mcshaders.core.backend.EffectBackend;
 import net.cyberpunk042.mcshaders.core.binding.BindingRegistry;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
+import net.cyberpunk042.mcshaders.core.effect.EffectRegistry;
 import net.cyberpunk042.mcshaders.core.effect.EffectStack;
 import net.cyberpunk042.mcshaders.core.graph.EffectCompiler;
 import net.cyberpunk042.mcshaders.core.graph.EffectGraph;
@@ -23,6 +25,7 @@ import net.cyberpunk042.mcshaders.core.transition.Transition;
  *
  * <p>Not thread-safe: intended to be owned and called by the render thread.
  */
+@Stable(since = "0.1.0")
 public final class ShaderPipeline {
 
     /** Default cross-dimension blend length, in ticks (1.5s at 20 TPS). */
@@ -40,9 +43,17 @@ public final class ShaderPipeline {
     private EffectGraph lastGraph = EffectGraph.empty();
 
     public ShaderPipeline(EffectBackend backend, BindingRegistry registry) {
+        this(backend, registry, new EffectRegistry());
+    }
+
+    /**
+     * @param effects third-party effect definitions; should be frozen before the
+     *                first frame so the render path reads a stable set
+     */
+    public ShaderPipeline(EffectBackend backend, BindingRegistry registry, EffectRegistry effects) {
         this.backend = Objects.requireNonNull(backend, "backend");
         this.registry = registry == null ? BindingRegistry.empty() : registry;
-        this.compiler = new EffectCompiler(backend.capabilities());
+        this.compiler = new EffectCompiler(backend.capabilities(), effects);
     }
 
     public EffectBackend backend() {
