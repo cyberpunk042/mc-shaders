@@ -1,0 +1,28 @@
+modLoader = "javafml"
+loaderVersion = "[1,)"
+license = "MIT"
+issueTrackerURL = "https://github.com/cyberpunk042/mc-shaders/issues"
+
+[[mods]]
+modId = "mcshaders"
+version = "${version}"
+displayName = "MC Shaders"
+authors = "cyberpunk042"
+description = '''
+A dimension-aware shader effect framework for Minecraft. Binds backend-neutral
+visual effects to dimensions, with smooth transitions between them.
+'''
+
+[[dependencies.mcshaders]]
+modId = "neoforge"
+type = "required"
+versionRange = "[26.2,)"
+ordering = "NONE"
+side = "BOTH"
+
+[[dependencies.mcshaders]]
+modId = "minecraft"
+type = "required"
+versionRange = "[26.2,26.3)"
+ordering = "NONE"
+side = "BOTH"

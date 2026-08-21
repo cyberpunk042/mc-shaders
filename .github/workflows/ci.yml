@@ -1,0 +1,73 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # The framework core: pure Java, no Minecraft, no network beyond Maven Central.
+  # This job is authoritative — it must stay green.
+  # ───────────────────────────────────────────────────────────────────────────
+  core:
+    name: Core (pure Java)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        working-directory: core
+        run: gradle test --no-daemon --console=plain
+
+      - name: Publish test report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-results
+          path: core/build/test-results/test/*.xml
+          if-no-files-found: warn
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The Minecraft layer. ADVISORY until the version table is pinned.
+  #
+  # Nothing here was resolved in the environment that bootstrapped the repo —
+  # every Minecraft Maven host was unreachable and only JDK 21 was available.
+  # This job exists precisely to find out which numbers in gradle.properties are
+  # wrong; see docs/VERSIONS.md. It does not gate the build while that is true.
+  #
+  # Flip continue-on-error to false once it has passed once. That is the moment
+  # the version table graduates from "reported" to "verified".
+  # ───────────────────────────────────────────────────────────────────────────
+  minecraft:
+    name: Minecraft layer (advisory)
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: gradle build --no-daemon --console=plain --stacktrace

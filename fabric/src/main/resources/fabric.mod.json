@@ -1,0 +1,30 @@
+{
+  "schemaVersion": 1,
+  "id": "mcshaders",
+  "version": "${version}",
+  "name": "MC Shaders",
+  "description": "A dimension-aware shader effect framework for Minecraft. Binds backend-neutral visual effects to dimensions, with smooth transitions between them.",
+  "authors": [
+    "cyberpunk042"
+  ],
+  "contact": {
+    "sources": "https://github.com/cyberpunk042/mc-shaders",
+    "issues": "https://github.com/cyberpunk042/mc-shaders/issues"
+  },
+  "license": "MIT",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.cyberpunk042.mcshaders.fabric.McShadersFabric"
+    ],
+    "client": [
+      "net.cyberpunk042.mcshaders.fabric.McShadersFabricClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.18.4",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  }
+}

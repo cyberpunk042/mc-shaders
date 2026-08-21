@@ -1,0 +1,30 @@
+# Gradle
+.gradle/
+build/
+!gradle/wrapper/gradle-wrapper.jar
+gradle-app.setting
+.gradletasknamecache
+
+# Stonecutter derives these from active_versions in gradle.properties
+versions/
+
+# Minecraft dev runtime
+run/
+runs/
+logs/
+saves/
+
+# IDEs
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.settings/
+.classpath
+.project
+*.launch
+
+# OS
+.DS_Store
+Thumbs.db
