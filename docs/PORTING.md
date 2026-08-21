@@ -75,6 +75,15 @@ Minecraft Maven hosts. A maths library does not compromise that.
 - **JOML** is allowed, and expected. The shape model uses `Vector3f`, and Minecraft
   itself uses JOML, so sharing it makes interop free rather than requiring a
   conversion layer at every boundary.
+
+  **Its version tracks Minecraft, not latest.** Minecraft 26.2 declares
+  `org.joml:joml:{strictly 1.10.8}` through `minecraft-dependencies`. A strict
+  constraint admits no other version, so publishing a newer JOML from `core` makes
+  the loader modules fail to resolve outright. Bump this only when Minecraft does.
+
+  This one was found by CI, not by reading: `core` and `common` both build happily
+  against any JOML, because neither sees Minecraft's constraint. Only the loader
+  modules do.
 - **Gson stays out of `core`.** JSON binding belongs in a module above it. Keeping
   the model free of serialisation concerns is what lets the same model be loaded
   from a datapack, a config file, or constructed in code — and under the licence
