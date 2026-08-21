@@ -140,7 +140,7 @@ Built and verified:
 - Public API for third parties: effect types, backend contribution with priority
   selection, and binding registration, all with a defined registration lifecycle
 
-**75 tests, 0 failures.**
+**119 tests, 0 failures.**
 
 Not built yet:
 

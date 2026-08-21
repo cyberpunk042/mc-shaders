@@ -22,6 +22,16 @@ repositories {
 }
 
 dependencies {
+    // The one allowed dependency class: pure-Java maths from Maven Central. Never
+    // Minecraft, never a graphics API — see docs/PORTING.md.
+    //
+    // The version tracks Minecraft rather than latest. Minecraft 26.2 declares
+    // `org.joml:joml:{strictly 1.10.8}`, and a strict constraint cannot be
+    // satisfied by anything else — so publishing a newer JOML here makes the mod
+    // modules unresolvable. Interop with Minecraft is the whole reason this
+    // dependency exists, so matching its pin is the point, not a concession.
+    api("org.joml:joml:1.10.8")
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

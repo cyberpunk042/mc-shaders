@@ -13,7 +13,7 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 93 tests, 0 failures, on JDK 21.
+**Verified:** 119 tests, 0 failures, on JDK 21.
 
 ## M1.5 — Library surface ✅ done
 
@@ -48,6 +48,30 @@ without a GPU or a game.
 - Total: every call returns a result or throws, and the result is never its input
   unchanged. Returning the input as a failure signal is what lets a compile hook
   re-enter with identical input and recurse until the stack dies
+
+## M1.7 — Shape maths foundation ✅ done
+
+First slice of the visual-engine extraction from the-virus-block-mc. See
+[PORTING.md](PORTING.md) for the licensing split and the measured scope.
+
+- `ShapeMath` — sphere, spheroid, ellipsoid, ovoid, egg, pear, droplet, bullet and
+  cone vertex generation, normals, blending
+- `SimplexNoise`, `ShapeState`, `ShapeStage`, and the shape vocabulary enums
+- Validation annotations the shape model uses
+
+Ported with characterisation tests, which it had none of before. They earned their
+keep immediately — see the note at the end of PORTING.md.
+
+## M1.8 — Shape model ✅ done
+
+`Shape` plus `SphereShape`, `RingShape`, `CylinderShape` and `PrismShape`, with
+the enums, effect records and `CellType`/`Facing`/`Axis` they depend on.
+
+- JSON binding stripped on the way across; `@JsonField` metadata retained so a
+  codec layer above core can still serialise the model
+- `core` gains JOML — pure-Java maths, the one allowed dependency class
+- Contract tests covering all four shapes uniformly, which is what catches an
+  automated strip having quietly damaged one of them
 
 ## M2 — First rendering backend
 
