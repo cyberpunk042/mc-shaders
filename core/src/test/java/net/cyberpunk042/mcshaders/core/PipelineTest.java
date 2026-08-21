@@ -33,7 +33,7 @@ class PipelineTest {
             new EffectBackend.FrameContext(1920, 1080, 0.5f, 0.0);
 
     private static EffectLayer layer(String id, EffectKind kind, double weight, int priority) {
-        return new EffectLayer(id, kind, EffectParams.empty(), BlendMode.ALPHA, weight, priority);
+        return EffectLayer.builder(id).kind(kind).weight(weight).priority(priority).build();
     }
 
     @Nested
@@ -200,8 +200,11 @@ class PipelineTest {
         void excessiveAccumulatingLayersAreFlagged() {
             EffectLayer[] layers = new EffectLayer[EffectCompiler.ACCUMULATION_WARN_THRESHOLD + 1];
             for (int i = 0; i < layers.length; i++) {
-                layers[i] = new EffectLayer("add" + i, EffectKind.BLOOM, EffectParams.empty(),
-                        BlendMode.ADD, 1.0, i);
+                layers[i] = EffectLayer.builder("add" + i)
+                        .kind(EffectKind.BLOOM)
+                        .blend(BlendMode.ADD)
+                        .priority(i)
+                        .build();
             }
 
             EffectGraph graph = new EffectCompiler(BackendCapabilities.full("test"))

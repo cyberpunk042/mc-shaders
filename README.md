@@ -32,11 +32,43 @@ has no Minecraft dependency at all, and its test suite runs on a bare JDK.
 | **Loaders** | Fabric, NeoForge |
 | **Java** | 25 for the mod, 21 for the framework core |
 | **Gradle** | 9.4.0, pinned in the committed wrapper |
+| **Artifacts** | `mcshaders-core` (no Minecraft), `mcshaders-api` (for mods) |
 
 Minecraft coordinates are looked up per version from `gradle.properties`, so
 retargeting is one property change rather than a build script edit. Version
 provenance and confidence levels — including which numbers are still unverified —
 are in [docs/VERSIONS.md](docs/VERSIONS.md).
+
+## Using it as a library
+
+Other mods can contribute effects, backends and dimension looks; the pure-Java core
+is also usable in any JVM project with no Minecraft involved.
+
+```kotlin
+dependencies {
+    implementation("net.cyberpunk042:mcshaders-api:0.2.0")   // in a Minecraft mod
+    implementation("net.cyberpunk042:mcshaders-core:0.2.0")  // anywhere else
+}
+```
+
+```java
+// Give a dimension a look
+McShadersAPI.registerBinding(DimensionBinding.of(
+        "mymod:dreamscape", DimensionId.parse("mymod:dreamscape"), look));
+
+// Add an effect type of your own
+McShadersAPI.registerEffect(EffectDefinition.of("mymod:kaleidoscope", "mymod"));
+
+// Or supply an entire renderer
+McShadersAPI.registerBackend(new MyBackendFactory());
+```
+
+Registration closes on first use of the backend, so register from your mod's
+initialiser. Load order between mods does not matter: backends are chosen by declared
+priority, and colliding effect types are refused rather than silently shadowed.
+
+Full guide, including how to implement a backend:
+**[docs/USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md)**.
 
 ## Layout
 
@@ -105,8 +137,10 @@ Built and verified:
 - Transitions with easing and mid-blend retargeting
 - Capability-aware compilation to a render plan
 - The backend seam, with a no-op implementation
+- Public API for third parties: effect types, backend contribution with priority
+  selection, and binding registration, all with a defined registration lifecycle
 
-**52 tests, 0 failures.**
+**75 tests, 0 failures.**
 
 Not built yet:
 

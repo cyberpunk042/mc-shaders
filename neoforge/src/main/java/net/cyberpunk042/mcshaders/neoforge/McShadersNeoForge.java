@@ -5,7 +5,13 @@ import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-/** NeoForge entrypoint. A thin adapter over the shared lifecycle. */
+/**
+ * NeoForge entrypoint. A thin adapter over the shared lifecycle.
+ *
+ * <p>As on Fabric, registration closes on first use rather than at a fixed
+ * lifecycle event, so other mods can contribute from their own construction
+ * regardless of load order.
+ */
 @Mod(McShaders.MOD_ID)
 public final class McShadersNeoForge {
 

@@ -6,6 +6,8 @@ on:
   push:
     branches: [main]
   pull_request:
+  release:
+    types: [published]
   workflow_dispatch:
 
 concurrency:
@@ -95,3 +97,46 @@ jobs:
 
       - name: Build
         run: ./gradlew build --console=plain
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # Publish the library artifacts to GitHub Packages.
+  #
+  # Runs only on a published release, and only after every check is green — an
+  # artifact that nobody can build from is worse than no artifact.
+  #
+  # Two coordinates are published:
+  #   net.cyberpunk042:mcshaders-core  the pure-Java framework, usable off Minecraft
+  #   net.cyberpunk042:mcshaders-api   what other mods compile against
+  # ───────────────────────────────────────────────────────────────────────────
+  publish:
+    name: Publish to GitHub Packages
+    if: github.event_name == 'release'
+    needs: [core, common, loaders]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Publish core
+        working-directory: core
+        run: ../gradlew publish --console=plain
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Publish API
+        run: ./gradlew :common:publish --configure-on-demand --console=plain
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

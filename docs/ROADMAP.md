@@ -13,7 +13,22 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 52 tests, 0 failures, on JDK 21.
+**Verified:** 75 tests, 0 failures, on JDK 21.
+
+## M1.5 — Library surface ✅ done
+
+Making the framework consumable by other people.
+
+- `McShadersAPI` — the supported entry point, with `@Stable`/`@Experimental` markers
+- `EffectDefinition` + `EffectRegistry` — third-party effect types, namespaced,
+  refused on collision rather than last-write-wins
+- `BackendFactory` + `BackendRegistry` — contributed renderers, priority selection,
+  fall-through on failed initialisation, contained factory exceptions
+- Registration lifecycle that closes on first use, so it is correct on both loaders
+  without depending on either's lifecycle events
+- Published to GitHub Packages as `mcshaders-core` and `mcshaders-api`, with sources
+  and javadoc
+- [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md), whose examples are themselves tests
 
 ## M2 — First rendering backend
 
@@ -21,7 +36,9 @@ Make it draw something.
 
 - Confirm 26.2's post-processing entry points against real sources — **do not
   write this from memory**, the API is new and unverified here
-- `OpenGLBackend` implementing `EffectBackend`
+- `OpenGLBackend` implementing `EffectBackend`, registered through the same
+  `BackendFactory` path third parties use — if the built-in renderer needs privileged
+  access, that is a gap in the public API
 - Client render hook feeding `ShaderPipeline.frame()`
 - `WorldState` sampler pulling dimension, time, Y, weather, biome tags
 - Backend selection with graceful fallback to `NoOpBackend`

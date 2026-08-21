@@ -12,6 +12,7 @@ import net.cyberpunk042.mcshaders.core.param.EffectParams;
  * in, and unsupported effects removed. A backend can execute it as-is.
  *
  * @param id     the originating layer id, preserved for debugging and profiling
+ * @param type   the effect definition id for a third-party effect, or {@code null}
  * @param kind   what to render
  * @param params fully resolved parameters
  * @param blend  how to composite the result
@@ -20,6 +21,7 @@ import net.cyberpunk042.mcshaders.core.param.EffectParams;
  */
 public record GraphNode(
         String id,
+        String type,
         EffectKind kind,
         EffectParams params,
         BlendMode blend,
@@ -31,5 +33,11 @@ public record GraphNode(
             throw new IllegalArgumentException("Graph node id must not be blank");
         }
         params = params == null ? EffectParams.empty() : params;
+        type = (type == null || type.isBlank()) ? null : type;
+    }
+
+    /** Whether this pass renders a third-party effect type rather than a built-in kind. */
+    public boolean hasDefinitionType() {
+        return type != null;
     }
 }
