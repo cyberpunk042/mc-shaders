@@ -37,6 +37,20 @@ certainly a number in `gradle.properties`, not the build logic.
 Fabric described the 26.1 tooling and API changes as the largest they had ever
 made for a single release.
 
+### Mappings are gone, and the Loom plugin id changed with them
+
+Because 26.1+ ships unobfuscated, **no mapping artifacts are published for these
+versions**. Two consequences, both found the hard way by CI:
+
+- The build must apply **`net.fabricmc.fabric-loom`**, the newer plugin that does
+  not remap Minecraft or mods. The legacy `fabric-loom` id resolves fine and then
+  fails at configuration time with `Failed to find official mojang mappings for
+  26.2`.
+- There is **no `mappings(...)` dependency at all**. `loom.officialMojangMappings()`
+  is the 1.21-era answer and has nothing to resolve on 26.x.
+
+If you are porting a mod from 1.21, this is the change that will bite first.
+
 ### The renderer transition
 
 26.1 was expected to be the last release supporting **only** OpenGL. 26.2 ships
@@ -51,12 +65,13 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Key | Value | Status | Source |
 |---|---|---|---|
-| `fabric_loom_version` | `1.15-SNAPSHOT` | **Low confidence** | Fabric's 26.1 announcement says "Loom 1.15"; the exact artifact suffix is a guess. Local resolution is impossible here (host unreachable), so CI settles it. |
+| `fabric_loom_version` | `1.15.5` | **Verified in CI** | `1.15-SNAPSHOT` resolved to Loom 1.15.5 on a runner; now pinned concretely for reproducibility. |
 | `moddevgradle_version` | `2.0.141` | Reported | Gradle Plugin Portal listing for `net.neoforged.moddev` |
 | `gradle_version` | `9.4.0` | **Verified** | Pinned in the committed wrapper; confirmed present in the Gradle version index and downloaded successfully. |
 | `java_version` | `25` | Reported | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
 | `mc_26_2_fabric_loader` | `0.18.4` | Reported | Fabric's 26.1 announcement, latest stable loader |
 | `mc_26_2_fabric_api` | `0.157.0+26.2` | Reported | Modrinth version listing, published 2026-08-10 |
+| Fabric Loom plugin id | `net.fabricmc.fabric-loom` | **Verified in CI** | The legacy `fabric-loom` id resolved, then failed with "Failed to find official mojang mappings for 26.2". See below. |
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Low confidence** | Derived from the documented `26.2.0.x` prefix scheme and a build number that was already stale when read. Expect to bump this. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
 

@@ -30,7 +30,7 @@ pluginManagement {
     // them by id alone. A `plugins {}` block cannot interpolate a property, so
     // centralising them is what keeps gradle.properties the single source of truth.
     plugins {
-        id("fabric-loom") version providers.gradleProperty("fabric_loom_version").get()
+        id("net.fabricmc.fabric-loom") version providers.gradleProperty("fabric_loom_version").get()
         id("net.neoforged.moddev") version providers.gradleProperty("moddevgradle_version").get()
     }
 }

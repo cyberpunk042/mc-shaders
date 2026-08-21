@@ -5,9 +5,6 @@ build/
 gradle-app.setting
 .gradletasknamecache
 
-# Stonecutter derives these from active_versions in gradle.properties
-versions/
-
 # Minecraft dev runtime
 run/
 runs/

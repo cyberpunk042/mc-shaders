@@ -1,8 +1,10 @@
 name: CI
 
+# Feature branches are covered by their pull request; pushing to a branch that
+# has one would otherwise run the whole matrix twice for the same commit.
 on:
   push:
-    branches: ["**"]
+    branches: [main]
   pull_request:
   workflow_dispatch:
 

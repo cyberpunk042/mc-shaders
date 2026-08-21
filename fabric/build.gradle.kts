@@ -1,5 +1,9 @@
 plugins {
-    id("fabric-loom")
+    // The *new* Loom plugin, required from Minecraft 26.1 onward. It does not
+    // remap Minecraft or mods, because the game ships unobfuscated from 26.1 —
+    // the legacy `fabric-loom` id fails with "Failed to find official mojang
+    // mappings", since none are published for these versions.
+    id("net.fabricmc.fabric-loom")
 }
 
 // The Minecraft coordinates are looked up by version key from the root
@@ -13,7 +17,7 @@ fun versioned(suffix: String): String =
 
 dependencies {
     minecraft("com.mojang:minecraft:${versioned("minecraft")}")
-    mappings(loom.officialMojangMappings())
+    // No mappings dependency: 26.1+ is unobfuscated and carries real names.
 
     modImplementation("net.fabricmc:fabric-loader:${versioned("fabric_loader")}")
     modImplementation("net.fabricmc.fabric-api:fabric-api:${versioned("fabric_api")}")
