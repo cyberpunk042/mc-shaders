@@ -87,7 +87,8 @@ Each step is independently useful and independently verifiable.
 1. **GLSL include resolution** ✅ — the expansion the shader corpus depends on.
 2. **Shape maths foundation** ✅ — `ShapeMath`, `SimplexNoise`, shape state and the
    shape vocabulary enums. Pure maths, now under test for the first time.
-3. **Shape model** — the concrete shapes, with JSON binding split out.
+3. **Shape model** ✅ — `Shape` plus sphere, ring, cylinder and prism, with JSON
+   binding split out and the `@JsonField` metadata retained for a codec layer.
 4. **Field model: links and primitives** — the wires: follow, mirror, phase offset,
    radius match, orbit sync. `LinkResolver` is the substance.
 5. **Effect and visual config model** — the contract between GUI, engine and GLSL.
@@ -106,3 +107,31 @@ useful than what was originally asserted.
 
 Porting untested code without writing tests as it moves means carrying its unknowns
 across a version boundary and finding out later which of them mattered.
+
+## Mechanics of stripping the JSON binding
+
+The shape classes each carried a two-line `toJson()` delegating to a Gson-backed
+serialiser. Removing it is mechanical, and was scripted — but three things about the
+script are worth knowing before running it again on the remaining classes:
+
+- **Rewrite imports *after* deciding what to drop, not before.** Renaming
+  `net.cyberpunk042.util.json.JsonSerializer` to its new package first meant the
+  drop-rule no longer recognised it, and the dead import survived.
+- **An interface declares `toJson()` with no body.** Brace-matching finds nothing to
+  remove, so the abstract declaration needs handling separately.
+- **Removing a method orphans its `@Override`.** The orphan then binds to whatever
+  method follows — and if that one is `static`, the compiler rejects it in a way that
+  points at the wrong line entirely.
+
+None of these are subtle once seen; all three cost a compile cycle.
+
+## The same-package trap, twice
+
+Both port attempts so far failed to compile for the same reason: a file that imports
+nothing still references its own package. `ShapeMath` needed `CloudStyle` and
+`EdgeTransitionMode`; the shape model needed `SphereDeformation`, `SphereAlgorithm`
+and `OrientationAxis`, plus two `visual.effect` records reached by fully-qualified
+name rather than import.
+
+When porting the next batch, resolve the transitive closure first rather than
+trusting the import list.

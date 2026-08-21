@@ -22,6 +22,12 @@ repositories {
 }
 
 dependencies {
+    // The one allowed dependency class: pure-Java maths from Maven Central. Never
+    // Minecraft, never a graphics API — see docs/PORTING.md. JOML is what Minecraft
+    // itself uses, so sharing it makes interop free instead of needing a conversion
+    // layer at every boundary.
+    api("org.joml:joml:1.10.9")
+
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")

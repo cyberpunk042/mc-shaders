@@ -13,7 +13,7 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 106 tests, 0 failures, on JDK 21.
+**Verified:** 119 tests, 0 failures, on JDK 21.
 
 ## M1.5 — Library surface ✅ done
 
@@ -61,6 +61,17 @@ First slice of the visual-engine extraction from the-virus-block-mc. See
 
 Ported with characterisation tests, which it had none of before. They earned their
 keep immediately — see the note at the end of PORTING.md.
+
+## M1.8 — Shape model ✅ done
+
+`Shape` plus `SphereShape`, `RingShape`, `CylinderShape` and `PrismShape`, with
+the enums, effect records and `CellType`/`Facing`/`Axis` they depend on.
+
+- JSON binding stripped on the way across; `@JsonField` metadata retained so a
+  codec layer above core can still serialise the model
+- `core` gains JOML — pure-Java maths, the one allowed dependency class
+- Contract tests covering all four shapes uniformly, which is what catches an
+  automated strip having quietly damaged one of them
 
 ## M2 — First rendering backend
 
