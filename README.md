@@ -7,8 +7,9 @@ have them blend smoothly as players move between worlds. Effects are described a
 backend-neutral data, so the same binding renders on OpenGL today and Vulkan when
 Minecraft's renderer transition completes.
 
-> **Status: early.** The framework core is built and tested. It does not draw
-> anything yet — see [Where this actually is](#where-this-actually-is).
+> **Status: early.** The framework is built, tested, and builds into Fabric and
+> NeoForge jars for Minecraft 26.2. It does not draw anything yet — see
+> [Where this actually is](#where-this-actually-is).
 
 ## Why it is built this way
 
@@ -113,13 +114,13 @@ Not built yet:
 - Datapack loading — bindings are programmatic for now (M3)
 - The demo dimensions (M4)
 
-Verified beyond the core: the root build, the composite substitution of `core`
-into `common`, and `:common:build` itself all run clean.
+The whole build is green in CI: `./gradlew build` on JDK 25 produces Fabric and
+NeoForge jars against Minecraft 26.2, which pins every version in
+[docs/VERSIONS.md](docs/VERSIONS.md).
 
-**The Fabric and NeoForge modules have never been resolved against live Maven** —
-the environment this was bootstrapped in could reach no Minecraft Maven host, so
-`fabric_loom_version` and `mc_26_2_neoforge` in particular are unverified guesses.
-CI's `loaders` job is advisory until its first green run pins them.
+Getting there surfaced two 26.x migration details worth knowing if you are porting
+from 1.21 — the Loom plugin id changed and mappings are gone entirely. Both are
+written up in VERSIONS.md.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 

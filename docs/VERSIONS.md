@@ -4,18 +4,21 @@ Every external version this project pins, where the number came from, and how
 confident we are in it. Values live in [`gradle.properties`](../gradle.properties);
 this file explains them.
 
-## Why this file exists
+## Status: verified
 
-The environment that bootstrapped this repository could not reach any Minecraft
-Maven host (`maven.fabricmc.net`, `maven.neoforged.net`, `maven.architectury.dev`
-and `api.modrinth.com` all refuse the connection), and only had JDK 21 available
-where 26.x needs 25. Nothing in the Minecraft layer was resolved or compiled
-there. Rather than present guessed numbers as verified, each one is recorded
-below with its source and status.
+**Every version below is confirmed by a green CI build** as of 2026-08-21 —
+`./gradlew build` on JDK 25, 13 tasks executed, Fabric and NeoForge jars produced
+against Minecraft 26.2.
 
-**The first successful CI run is what promotes these from `reported` to
-`verified`.** If a build fails on dependency resolution, the fix is almost
-certainly a number in `gradle.properties`, not the build logic.
+That was not true when the table was first written. The environment that
+bootstrapped this repository could not reach any Minecraft Maven host
+(`maven.fabricmc.net`, `maven.neoforged.net`, `maven.architectury.dev` and
+`api.modrinth.com` all refused the connection), and had only JDK 21 where 26.x
+needs 25, so every number started as a sourced guess. The history is kept below
+because the failures were informative — see the mappings section in particular.
+
+If a build starts failing on dependency resolution, suspect a number here before
+suspecting the build logic.
 
 ## Minecraft
 
@@ -70,13 +73,13 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 | Key | Value | Status | Source |
 |---|---|---|---|
 | `fabric_loom_version` | `1.15.5` | **Verified in CI** | `1.15-SNAPSHOT` resolved to Loom 1.15.5 on a runner; now pinned concretely for reproducibility. |
-| `moddevgradle_version` | `2.0.141` | Reported | Gradle Plugin Portal listing for `net.neoforged.moddev` |
+| `moddevgradle_version` | `2.0.141` | **Verified in CI** | Gradle Plugin Portal listing for `net.neoforged.moddev` |
 | `gradle_version` | `9.4.0` | **Verified** | Pinned in the committed wrapper; confirmed present in the Gradle version index and downloaded successfully. |
-| `java_version` | `25` | Reported | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
-| `mc_26_2_fabric_loader` | `0.18.4` | Reported | Fabric's 26.1 announcement, latest stable loader |
-| `mc_26_2_fabric_api` | `0.157.0+26.2` | Reported | Modrinth version listing, published 2026-08-10 |
+| `java_version` | `25` | **Verified in CI** | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
+| `mc_26_2_fabric_loader` | `0.18.4` | **Verified in CI** | Fabric's 26.1 announcement, latest stable loader |
+| `mc_26_2_fabric_api` | `0.157.0+26.2` | **Verified in CI** | Modrinth version listing, published 2026-08-10 |
 | Fabric Loom plugin id | `net.fabricmc.fabric-loom` | **Verified in CI** | The legacy `fabric-loom` id resolved, then failed with "Failed to find official mojang mappings for 26.2". See below. |
-| `mc_26_2_neoforge` | `26.2.0.35-beta` | **Low confidence** | Derived from the documented `26.2.0.x` prefix scheme and a build number that was already stale when read. Expect to bump this. |
+| `mc_26_2_neoforge` | `26.2.0.35-beta` | **Verified in CI** | Started as the least confident value in the table, derived from the documented `26.2.0.x` prefix scheme; it resolved and built. Newer builds exist (the Maven listing shows at least `26.2.0.62`), so this is a deliberate pin, not the latest. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
 
 ## Retargeting to 26.3 when it releases

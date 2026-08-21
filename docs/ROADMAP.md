@@ -73,10 +73,14 @@ selection is invisible to pack authors.
 
 ## Cross-cutting, ongoing
 
-- **Pin the versions.** `mc_26_2_neoforge` and `fabric_loom_version` are
-  low-confidence — see [VERSIONS.md](VERSIONS.md). The first green run of the
-  advisory `loaders` CI job settles the table, and is the trigger to make that job
-  blocking.
+- ~~**Pin the versions.**~~ Done 2026-08-21 — the loaders job went green, pinning
+  the whole table, and is now blocking. See [VERSIONS.md](VERSIONS.md).
+- **Gradle 10 readiness.** The loader build reports "Deprecated Gradle features
+  were used in this build, making it incompatible with Gradle 10." Worth a pass
+  with `--warning-mode all` to see whether it is our scripts or the Loom/MDG
+  plugins; if it is theirs, this waits on their updates.
+- **Consider a newer NeoForge build.** `26.2.0.35-beta` is pinned and works, but
+  newer builds exist.
 - **Wire multiversion** once 26.3 ships and the loader build is green. The
   per-version property layout is already in place; see VERSIONS.md for why the
   preprocessor was deliberately backed out rather than left half-connected.

@@ -70,20 +70,17 @@ jobs:
         run: ./gradlew :common:build --configure-on-demand --console=plain
 
   # ───────────────────────────────────────────────────────────────────────────
-  # The loader modules. ADVISORY until the version table is pinned.
+  # The loader modules — the only part that needs the Minecraft Maven hosts.
   #
-  # These are the only parts that need the Minecraft Maven hosts, and none of
-  # them were resolvable in the environment that bootstrapped this repository.
-  # This job exists to find out which coordinates in gradle.properties are wrong
-  # — see docs/VERSIONS.md. It does not gate the build while that is true.
-  #
-  # Flip continue-on-error to false once it has passed. That is the moment the
-  # version table graduates from "reported" to "verified".
+  # This job was advisory while the version table was unverified, since nothing
+  # in it could be resolved in the environment that bootstrapped the repository.
+  # It went green on 2026-08-21 (13 tasks, Fabric and NeoForge jars built against
+  # Minecraft 26.2), which pinned every coordinate in gradle.properties, so it is
+  # now blocking like the rest.
   # ───────────────────────────────────────────────────────────────────────────
   loaders:
-    name: Fabric + NeoForge (advisory)
+    name: Fabric + NeoForge
     runs-on: ubuntu-latest
-    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
 
