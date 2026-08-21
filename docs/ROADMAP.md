@@ -13,7 +13,7 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 75 tests, 0 failures, on JDK 21.
+**Verified:** 93 tests, 0 failures, on JDK 21.
 
 ## M1.5 — Library surface ✅ done
 
@@ -29,6 +29,25 @@ Making the framework consumable by other people.
 - Published to GitHub Packages as `mcshaders-core` and `mcshaders-api`, with sources
   and javadoc
 - [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md), whose examples are themselves tests
+
+## M1.6 — GLSL include resolution ✅ done
+
+A shader library of any size needs includes, and GLSL has none. This is the
+expansion step, in `core` — pure string processing, so it is fully testable
+without a GPU or a game.
+
+- Include-once, so shared dependencies do not produce duplicate definitions
+- Cycles reported with the chain that formed them. Include-once alone already
+  prevents runaway recursion, so a cycle would otherwise be swallowed silently —
+  but GLSL has no forward declarations, so a cycle means symbols referenced
+  before they are declared, and that is worth saying out loud
+- `#line` directives with an integer source index plus a `SourceMap`, so driver
+  errors name the file a human has to edit. GLSL 150's `#line` takes integers
+  only, which is why the file names live in a side table
+- `#version` is kept as the first line, ahead of any emitted `#line`
+- Total: every call returns a result or throws, and the result is never its input
+  unchanged. Returning the input as a failure signal is what lets a compile hook
+  re-enter with identical input and recurse until the stack dies
 
 ## M2 — First rendering backend
 
