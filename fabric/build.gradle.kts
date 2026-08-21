@@ -19,8 +19,10 @@ dependencies {
     minecraft("com.mojang:minecraft:${versioned("minecraft")}")
     // No mappings dependency: 26.1+ is unobfuscated and carries real names.
 
-    modImplementation("net.fabricmc:fabric-loader:${versioned("fabric_loader")}")
-    modImplementation("net.fabricmc.fabric-api:fabric-api:${versioned("fabric_api")}")
+    // Plain `implementation`, not `modImplementation`: the 26.x Loom plugin does
+    // not remap mods, so the remapping configurations no longer exist.
+    implementation("net.fabricmc:fabric-loader:${versioned("fabric_loader")}")
+    implementation("net.fabricmc.fabric-api:fabric-api:${versioned("fabric_api")}")
 
     implementation(project(":common"))
 
@@ -31,7 +33,8 @@ dependencies {
 }
 
 loom {
-    splitEnvironmentSourceSets()
+    // No splitEnvironmentSourceSets(): this mod keeps client and common code in
+    // src/main, so there is no separate client source set to split out.
     mods {
         create("mcshaders") {
             sourceSet(sourceSets["main"])

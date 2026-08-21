@@ -48,6 +48,10 @@ versions**. Two consequences, both found the hard way by CI:
   26.2`.
 - There is **no `mappings(...)` dependency at all**. `loom.officialMojangMappings()`
   is the 1.21-era answer and has nothing to resolve on 26.x.
+- **The remapping configurations are gone with it.** `modImplementation` and its
+  siblings do not exist on the new plugin — mods are ordinary dependencies, so use
+  plain `implementation`. Otherwise the build script fails to compile with
+  `Unresolved reference 'modImplementation'`.
 
 If you are porting a mod from 1.21, this is the change that will bite first.
 
