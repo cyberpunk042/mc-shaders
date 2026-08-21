@@ -1,0 +1,97 @@
+name: CI
+
+# Feature branches are covered by their pull request; pushing to a branch that
+# has one would otherwise run the whole matrix twice for the same commit.
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  # ───────────────────────────────────────────────────────────────────────────
+  # The framework core: pure Java, no Minecraft, nothing beyond Maven Central.
+  # Authoritative — it must stay green.
+  # ───────────────────────────────────────────────────────────────────────────
+  core:
+    name: Core (pure Java)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # The core is a separate build, so it runs from its own directory using the
+      # repository's single pinned wrapper.
+      - name: Test
+        working-directory: core
+        run: ../gradlew test --console=plain
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: core-test-results
+          path: core/build/test-results/test/*.xml
+          if-no-files-found: warn
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The shared Minecraft-facing module. It depends only on the core and Maven
+  # Central — no Minecraft Maven — so it is also authoritative. This is what
+  # proves the composite substitution and the JDK 25 toolchain actually work.
+  # ───────────────────────────────────────────────────────────────────────────
+  common:
+    name: Common (JDK 25)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew :common:build --configure-on-demand --console=plain
+
+  # ───────────────────────────────────────────────────────────────────────────
+  # The loader modules — the only part that needs the Minecraft Maven hosts.
+  #
+  # This job was advisory while the version table was unverified, since nothing
+  # in it could be resolved in the environment that bootstrapped the repository.
+  # It went green on 2026-08-21 (13 tasks, Fabric and NeoForge jars built against
+  # Minecraft 26.2), which pinned every coordinate in gradle.properties, so it is
+  # now blocking like the rest.
+  # ───────────────────────────────────────────────────────────────────────────
+  loaders:
+    name: Fabric + NeoForge
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "25"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Build
+        run: ./gradlew build --console=plain
