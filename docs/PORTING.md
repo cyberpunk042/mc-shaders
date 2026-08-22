@@ -162,3 +162,71 @@ that are Minecraft-coupled despite sitting in a package that is otherwise clean:
 A third class of leftover only appears once the public JSON methods are gone:
 **private helpers that took a `JsonObject` or `JsonArray`** and were only ever
 called by them. They compile fine until their parameter type disappears.
+
+## Uniform-block layout: three declarations, nothing checking them
+
+The shader corpus in `the-virus-block-mc` surfaced a class of bug the engine is
+now able to catch, and it is worth writing down because it is not specific to
+that mod.
+
+A `layout(std140) uniform` block is bound by **byte offset, never by name**. It
+therefore has to be declared at least twice — once in the shader that reads it,
+once by whatever writes it — and nothing in the toolchain checks that the two
+agree. Insert one member into one side and every member after it shifts. The
+shader keeps reading floats; they are simply the wrong floats. No error is
+raised anywhere, at build time or at run time. The picture is just wrong.
+
+`the-virus-block-mc` has *three* declarations of `FieldVisualConfig`:
+
+| Declaration | Where | Role |
+|---|---|---|
+| GLSL block | `shaders/post/include/core/field_visual_base.glsl` | what the shader reads |
+| Java record | `client/visual/effect/FieldVisualUBO.java` | what actually gets written |
+| Pipeline JSON | `post_effect/field_visual_*.json` | what the pipeline declares |
+
+Its own comment says the quiet part out loud — *"CRITICAL: This layout MUST
+match across ALL effect shaders … any mismatch causes silent failures (NaN
+values, wrong params in wrong uniforms)"* — and the mod contains a
+`GLSLValidator` written to catch exactly this. It carries
+`// TODO: Implement GLSL parsing when ready`, it has no callers, and the
+`glslPath` it would look in names a file that does not exist.
+
+`core.layout` is that check, finished and testable without a GPU.
+
+### What it has to ignore to be worth running
+
+A validator that reports every spelling difference gets switched off, and then
+the real drift ships. Two differences are not defects:
+
+- **A matrix or array spelled as its elements.** Minecraft's post-effect JSON
+  has no matrix type, so a `mat4` must be written as four `vec4` rows. Both
+  sides are expanded to elements before comparing, and an element's generated
+  name is not treated as evidence. Before this rule the comparison flagged every
+  `CameraDataUBO` in the corpus; after it, all 25 agree — correctly, the bytes
+  being identical.
+- **A slot the shader reserves.** If the shader calls a member `Reserved3_0` and
+  the host writes `CameraX` there, the offsets line up and the shader ignores the
+  value. Reported, at INFO.
+
+Expanding arrays matters for more than noise. One `vec4 x[32]` is a single
+declaration but thirty-two slots of data, so a host writing one of them has left
+thirty-one unwritten. Counting declarations calls that a size difference;
+counting slots calls it what it is.
+
+### Findings against the corpus
+
+92 block declarations across 21 pipelines; 64 agree. The errors:
+
+| Block | Where it breaks | What it means |
+|---|---|---|
+| `FieldVisualConfig` | diverges at byte 264, in all 25 field-visual passes | shader has `GeoWaveResolution`, host writes `GeoSmoothRadius`; the two lists never realign, so roughly two-thirds of the block is read from the wrong place |
+| `MagicCircleConfig` | diverges at byte 56 | shader has `BreathTime`, host writes `UpZ` |
+| `ShockwaveConfig` | truncated at byte 144 | shader reads `ShapeType` onward; the host stops before it |
+| `VirusBlockParams` | truncated at byte 288 | `BlockPos` is `vec4[32]`; only element 0 is ever written |
+
+One caveat, stated because it changes how much the size figures mean: the mod's
+`PostEffectPassMixin` builds and substitutes its own buffer rather than filling
+the one the pipeline JSON declares, so the JSON's byte total is not necessarily
+what the GPU sees. The *divergence offsets* above do not depend on that — they
+are a disagreement between the shader and the record that writes it — but any
+claim about a short buffer does.
