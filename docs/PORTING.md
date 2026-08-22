@@ -426,3 +426,41 @@ about that is visible while it happens.
 
 `UNREACHABLE` is informational rather than a failure: an effect may legitimately
 carry parameters that are not meant to be edited by hand.
+
+
+## The two projects target different Minecraft versions
+
+Worth stating plainly, because it changes what "port this across" can mean:
+
+| | `the-virus-block-mc` | `mc-shaders` |
+|---|---|---|
+| Minecraft | **1.21.6** | **26.2** |
+| Mappings | `yarn_mappings=1.21.6+build.1` | none — 26.x ships unobfuscated |
+| Loom plugin id | `fabric-loom` (legacy) | `net.fabricmc.fabric-loom` |
+
+Every `net.minecraft` name in the mod is a **Yarn** name, and Yarn stopped being
+maintained from 26.1 onward because Mojang's own names are now in the jar. So the
+mod's Minecraft-facing code cannot cross by recompiling — the identifiers
+themselves differ. `MinecraftClient`, `Identifier`, `DrawContext`, `Screen` and the
+rest are Yarn spellings of classes that 26.2 calls something else.
+
+That is roughly 40,000 lines of GUI and several thousand of render code which are
+not portable as written, on top of being coupled to Minecraft at all.
+
+**It also retroactively justifies the rule this port has followed throughout.**
+Every batch excluded anything with a `net.minecraft` import — originally on the
+grounds that core must stay dependency-free. The stronger reason only became
+visible on checking the versions: that code is written against names which do not
+exist in the version this project targets. A port that had taken the "easy" route
+of moving Minecraft-facing classes and fixing them up would have been rewriting
+every one of them, not adjusting a few.
+
+What crossed instead — geometry, maths, the field model, the parameter model — is
+version-agnostic pure Java, and is unaffected by any of this.
+
+**One caveat on the shader corpus.** The pipeline JSON and GLSL analysed above are
+also 1.21.6-era. The `targets`/`passes`/`uniforms` post-effect format and the
+`InSampler` naming convention are what that version uses; whether 26.2 changed
+either is **not established here** and would need checking before treating the
+checker's model of the format as current. The std140 rules it enforces are a GLSL
+and OpenGL matter and do not depend on the Minecraft version.
