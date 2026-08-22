@@ -17,6 +17,22 @@ dependencies {
     // with the local project by group and module name. It is stated anyway so the
     // declaration is valid on its own terms and readable without knowing that.
     api("net.cyberpunk042:mcshaders-core:$coreVersion")
+
+    // `implementation`, not `api`: parsing is this module's business, not something
+    // consumers compile against. It costs nothing at runtime under a loader —
+    // Minecraft already provides gson, which is checked rather than assumed: Jade
+    // imports com.google.gson in two files and declares no gson dependency.
+    // The version matches check/, which parses shader chains with the same library.
+    implementation("com.google.code.gson:gson:2.11.0")
+
+    testImplementation(platform("org.junit:junit-bom:5.11.4"))
+    testImplementation("org.junit.jupiter:junit-jupiter")
+    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
+}
+
+tasks.test {
+    useJUnitPlatform()
+    testLogging { events("passed", "skipped", "failed") }
 }
 
 java {

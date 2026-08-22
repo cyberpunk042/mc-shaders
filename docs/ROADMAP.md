@@ -195,7 +195,12 @@ for the API not matching expectations.
 
 Make it authorable without Java.
 
-- Codecs for `EffectLayer`, `EffectStack`, `Condition`, `DimensionBinding`
+- ~~Codecs for `EffectLayer`, `EffectStack`, `Condition`, `DimensionBinding`~~ —
+  **done**: `common.codec.BindingCodec`, both directions, with pack-facing errors
+  that name the file and the path (`nether.json at stack.layers[2].params.dir[1]`).
+  It lives in `common` rather than `core` for the same reason the shader checker's
+  codec does: the engine models bindings, it does not parse them, so the published
+  library carries no JSON dependency. 22 tests, and `common` had none before this
 - Datapack loading from `data/<ns>/mcshaders/bindings/*.json`
 - Reload handling — build a fresh registry, swap atomically, ease into it
 - Pack-facing validation errors that name the file and the field
