@@ -10,6 +10,18 @@ import net.cyberpunk042.mcshaders.core.mesh.Mesh;
 import net.cyberpunk042.mcshaders.core.mesh.PrimitiveType;
 import net.cyberpunk042.mcshaders.core.mesh.Tessellator;
 import net.cyberpunk042.mcshaders.core.mesh.Vertex;
+import net.cyberpunk042.mcshaders.core.mesh.CapsuleTessellator;
+import net.cyberpunk042.mcshaders.core.mesh.ConeTessellator;
+import net.cyberpunk042.mcshaders.core.mesh.JetTessellator;
+import net.cyberpunk042.mcshaders.core.mesh.KamehamehaTessellator;
+import net.cyberpunk042.mcshaders.core.mesh.RaysTessellator;
+import net.cyberpunk042.mcshaders.core.mesh.TorusTessellator;
+import net.cyberpunk042.mcshaders.core.shape.CapsuleShape;
+import net.cyberpunk042.mcshaders.core.shape.ConeShape;
+import net.cyberpunk042.mcshaders.core.shape.JetShape;
+import net.cyberpunk042.mcshaders.core.shape.KamehamehaShape;
+import net.cyberpunk042.mcshaders.core.shape.RaysShape;
+import net.cyberpunk042.mcshaders.core.shape.TorusShape;
 import net.cyberpunk042.mcshaders.core.shape.CylinderShape;
 import net.cyberpunk042.mcshaders.core.shape.PolyType;
 import net.cyberpunk042.mcshaders.core.shape.PolyhedronShape;
@@ -229,6 +241,112 @@ class TessellationTest {
         assertTrue(Tessellator.tessellate(fine, 0).vertexCount()
                         > Tessellator.tessellate(coarse, 0).vertexCount(),
                 "quadrupling the segment count did not produce more vertices");
+    }
+
+
+    // ── the tessellators the dispatcher does not route to ──────────────────────
+
+    /**
+     * The other half of the package, called directly rather than through
+     * {@link Tessellator#tessellate(Shape, int)}.
+     *
+     * <p>Together these are roughly half the tessellation code and had no coverage at
+     * all. The checks are the structural ones — a mesh a GPU would accept — rather than
+     * assertions about what the geometry should look like, because "what a jet should
+     * look like" is a judgement about the effect and not something a test can hold.
+     */
+    static Stream<org.junit.jupiter.params.provider.Arguments> directlyCalled() {
+        return Stream.of(
+                org.junit.jupiter.params.provider.Arguments.of("capsule",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                CapsuleTessellator.tessellate(CapsuleShape.DEFAULT)),
+                org.junit.jupiter.params.provider.Arguments.of("cone",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                ConeTessellator.tessellate(ConeShape.DEFAULT)),
+                org.junit.jupiter.params.provider.Arguments.of("frustum",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                ConeTessellator.tessellate(ConeShape.FRUSTUM)),
+                org.junit.jupiter.params.provider.Arguments.of("torus",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                TorusTessellator.tessellate(TorusShape.DEFAULT)),
+                org.junit.jupiter.params.provider.Arguments.of("rays",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                RaysTessellator.tessellate(RaysShape.DEFAULT)),
+                org.junit.jupiter.params.provider.Arguments.of("jet",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                JetTessellator.tessellate(JetShape.DEFAULT, null)),
+                org.junit.jupiter.params.provider.Arguments.of("kamehameha",
+                        (java.util.function.Supplier<Mesh>) () ->
+                                KamehamehaTessellator.tessellate(KamehamehaShape.DEFAULT, null)));
+    }
+
+    @ParameterizedTest(name = "{0} produces a mesh a GPU would accept")
+    @MethodSource("directlyCalled")
+    void directTessellatorsProduceValidMeshes(String name,
+                                              java.util.function.Supplier<Mesh> tessellate) {
+        Mesh mesh = tessellate.get();
+
+        assertFalse(mesh.isEmpty(), name + " tessellated to nothing");
+
+        int vertices = mesh.vertexCount();
+        for (int i = 0; i < mesh.indices().length; i++) {
+            int index = mesh.indices()[i];
+            assertTrue(index >= 0 && index < vertices,
+                    name + " index[" + i + "] is " + index + ", outside [0, " + vertices + ")");
+        }
+
+        PrimitiveType type = mesh.primitiveType();
+        assertEquals(0, mesh.indexCount() % type.verticesPerPrimitive(),
+                name + " has " + mesh.indexCount() + " indices, not a whole number of " + type);
+
+        List<Vertex> list = mesh.vertices();
+        for (int i = 0; i < list.size(); i++) {
+            Vertex v = list.get(i);
+            assertTrue(finite(v.x()) && finite(v.y()) && finite(v.z()),
+                    name + " vertex[" + i + "] is not finite: ("
+                            + v.x() + ", " + v.y() + ", " + v.z() + ")");
+            assertTrue(finite(v.nx()) && finite(v.ny()) && finite(v.nz()),
+                    name + " vertex[" + i + "] has a non-finite normal");
+        }
+    }
+
+    @Test
+    @DisplayName("a torus is a ring: nothing sits at its centre")
+    void torusHasAHole() {
+        // The one geometric claim available without deciding what these should look
+        // like. A torus with a collapsed hole is a sphere-ish blob that still passes
+        // every structural check above.
+        TorusShape shape = TorusShape.of(1.0f, 0.25f);
+        Mesh mesh = TorusTessellator.tessellate(shape);
+
+        float nearest = Float.MAX_VALUE;
+        for (Vertex v : mesh.vertices()) {
+            nearest = Math.min(nearest, (float) Math.sqrt(v.x() * v.x() + v.z() * v.z()));
+        }
+        assertTrue(nearest > 0.5f,
+                "a vertex sits " + nearest + " from the axis; a torus of major 1.0 and minor"
+                        + " 0.25 should have nothing inside 0.75");
+    }
+
+    /**
+     * {@link Tessellator#tessellateAuto} picks a detail level and hands it to a
+     * parameter nothing reads.
+     *
+     * <p>Recorded alongside the {@code detail} test above, for the same reason: the
+     * method's whole body is choosing a value that gets discarded, so it is exactly
+     * equivalent to calling {@code tessellate(shape, 0)}.
+     */
+    @Test
+    @DisplayName("tessellateAuto and tessellate produce the same mesh")
+    void tessellateAutoIsTheSameAsTessellate() {
+        for (Shape shape : new Shape[] {
+                SphereShape.of(1.0f), CylinderShape.of(1.0f, 2.0f),
+                PolyhedronShape.of(PolyType.ICOSAHEDRON, 1.0f)}) {
+            assertEquals(Tessellator.tessellate(shape, 0).vertexCount(),
+                    Tessellator.tessellateAuto(shape).vertexCount(),
+                    shape.getType() + ": tessellateAuto started differing from tessellate —"
+                            + " if detail became meaningful, say so in the javadoc");
+        }
     }
 
     private static boolean finite(float f) {

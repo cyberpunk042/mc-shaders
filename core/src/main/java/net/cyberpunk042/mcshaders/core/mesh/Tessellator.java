@@ -202,10 +202,21 @@ public interface Tessellator {
     }
     
     /**
-     * Tessellates with automatic detail level based on shape size.
-     * 
-     * @param shape The shape to tessellate
-     * @return Generated mesh
+     * Equivalent to {@link #tessellate(Shape, int)} with any detail value.
+     *
+     * <p>The name says it picks a detail level from the shape's size, and its body does
+     * exactly that — {@link DetailLevel#forRadius} on half the bounds' length — before
+     * handing the result to a parameter no tessellator reads. So the computation is
+     * dead and this call is the same as {@code tessellate(shape, 0)}.
+     *
+     * <p>Kept, documented, and pinned by {@code TessellationTest} rather than removed,
+     * for the reason given on the class: resolution comes from the shape, and taking
+     * these away is a breaking change to make deliberately.
+     *
+     * @param shape the shape to tessellate
+     * @return the generated mesh, or {@link Mesh#empty()} if the shape's type has no
+     *         tessellator in this dispatcher
+     * @throws IllegalArgumentException if {@code shape} is null
      */
     static Mesh tessellateAuto(Shape shape) {
         if (shape == null) {
