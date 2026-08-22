@@ -69,8 +69,9 @@ listener lands, the example is already known to be readable.
 
 ## What is not here yet
 
-The 26.2 teleport call is now established — see
-[../docs/PORTALS-26.2.md](../docs/PORTALS-26.2.md) — and finding a portal's opening
-does not need the frame's shape, so `core.portal.FrameScan` handles that. What is
-still missing is the block use event and block registration on 26.2, so nothing
-reaches this dimension yet.
+Nothing reaches this dimension yet — but the API surface a portal needs is now
+established rather than guessed. The teleport call and the opening scan are in
+[../docs/PORTALS-26.2.md](../docs/PORTALS-26.2.md); registering the frame block and
+catching the right-click that lights it are in
+[../docs/BLOCKS-26.2.md](../docs/BLOCKS-26.2.md). What is left is writing it, and
+reading one last thing: what a portal block does when an entity stands in it.

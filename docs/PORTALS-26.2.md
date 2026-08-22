@@ -73,15 +73,20 @@ tested without a game — see `core.portal.FrameScan`. Its tests draw each world
 a picture and hold the scan to the claim above: every frame in them is a different
 shape, and none of those shapes appear in the scan itself.
 
-## What is still unread
+## The other two links
 
-Two links, and neither has a source here to read from. NeoTeleport is
-command-driven: it registers no blocks and handles no block interaction.
+Both are now read, by the same method, and are written up separately in
+[BLOCKS-26.2.md](BLOCKS-26.2.md):
 
-- **The use event** — what fires when a player right-clicks the frame with an
-  igniter.
-- **Registering a block** — the portal block that fills the opening, and what
-  happens when an entity is inside it.
+- **The use event** — `Block#useItemOn`, returning `InteractionResult`, with
+  flint and steel matched through the vanilla `minecraft:creeper_igniters` tag.
+- **Registering a block** — `BlockBehaviour.Properties.of().setId(key)`, which is
+  mandatory before construction on 26.2.
 
-Those are the next things to establish before any portal code is written, by the
-same method: find a 26.2 mod that does them, and read it.
+NeoTeleport has neither: it is command-driven, registering no blocks and handling
+no block interaction. The sources for those are Fabric API's own 26.2 branch,
+Blockus and PolyDecorations.
+
+What remains unread is the portal block's tick and entity-inside behaviour — what
+vanilla does when someone stands in one, and the cooldown that stops a player
+oscillating between dimensions.

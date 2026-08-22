@@ -186,20 +186,27 @@ Built and verified:
   was edited
 - The editor itself — schema-driven screens on Fabric, opened by an unbound key
 
-**360 tests in `core` and 35 in `check`, 0 failures** — both verified 2026-08-22.
+**377 tests in `core`, 54 in `common` and 35 in `check` — 466 in all, 0 failures.**
+Verified 2026-08-22.
 
 Not built yet:
 
 - Any rendering backend that draws (M2). The fog entry point is now established
   from a mod that compiles on 26.2; the post-effect chain is not — see
   [docs/RENDERING-26.2.md](docs/RENDERING-26.2.md)
-- Datapack loading — bindings are programmatic for now (M3)
+- Datapack loading — the format, its reader and its error reporting all exist and
+  are tested, but nothing hands them the files yet, so bindings are registered
+  programmatically (M3)
+- The portal onto `mcshaders:beyond`. Every 26.2 call it needs is now read out of a
+  mod that compiles on 26.2 rather than guessed — the teleport and the frame scan in
+  [docs/PORTALS-26.2.md](docs/PORTALS-26.2.md), block registration and the
+  right-click that lights it in [docs/BLOCKS-26.2.md](docs/BLOCKS-26.2.md)
 - The demo dimensions (M4)
 
-Two honest caveats about the editor. It compiles against the real 26.2 API in CI,
-which proves its calls exist — not that the screens look right; that needs someone
-to open them. And the mod registers no effects of its own yet, so on a fresh
-install it correctly opens a screen saying there is nothing to edit.
+One honest caveat about the editor: it compiles against the real 26.2 API in CI,
+which proves its calls exist — not that the screens look right. That needs someone
+to open them. It does now have contents to show, since the mod registers a fog
+effect and a look for `mcshaders:beyond` of its own.
 
 The whole build is green in CI: `./gradlew build` on JDK 25 produces Fabric and
 NeoForge jars against Minecraft 26.2, which pins every version in
