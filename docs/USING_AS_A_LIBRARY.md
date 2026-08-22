@@ -355,6 +355,27 @@ merging would leave bindings from a pack the player has just removed. Passing
 `null` means empty, which is what a reload that found no binding files legitimately
 produces.
 
+### Starting from pack files rather than a registry
+
+`reloadBindings` wants a `BindingRegistry`, and if what you have is a stack of JSON
+files, this is where they become one:
+
+```java
+var result = McShadersAPI.loadBindings(files);   // Map<String, String>: name -> contents
+result.problems().forEach(p -> LOGGER.warn("{}: {}", p.source(), p.message()));
+```
+
+The key of each entry is only ever used in error messages, so make it a path a pack
+author would recognise.
+
+One malformed file is skipped rather than taking every dimension's look down with
+it, and a binding a later pack overrode is reported too. That leniency is only
+defensible if the problems are seen — **a caller that discards the result has turned
+a loud failure into a silent one.** Log `problems()`.
+
+Applying is wholesale, for the same reason `reloadBindings` is. Passing no files
+empties the registry, which is what removing the last pack should do.
+
 ## Keeping what was edited
 
 A session is a sitting, not storage. When it goes out of scope so do its values,

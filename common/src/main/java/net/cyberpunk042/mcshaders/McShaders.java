@@ -52,6 +52,10 @@ public final class McShaders {
         // Before any third party registers, so a mod that wants to see what is
         // already present can, and so the built-ins cannot lose a name race.
         BuiltinEffects.register();
+        // After the effects, because a binding names an effect type and a mod
+        // reading the registries mid-init should not see a look referring to
+        // something that is not there yet.
+        BuiltinBindings.register();
         log.accept(MOD_NAME + " common init — API " + McShadersAPI.API_VERSION);
     }
 

@@ -2,6 +2,8 @@ package net.cyberpunk042.mcshaders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import net.cyberpunk042.mcshaders.codec.BindingLoader;
 import net.cyberpunk042.mcshaders.core.api.Experimental;
 import net.cyberpunk042.mcshaders.core.api.Stable;
 import net.cyberpunk042.mcshaders.core.backend.BackendFactory;
@@ -239,6 +241,37 @@ public final class McShadersAPI {
     public static void reloadBindings(BindingRegistry replacement) {
         McShaders.completeRegistration();
         McShaders.setRegistry(replacement);
+    }
+
+    /**
+     * Reads pack files into bindings and puts them in force.
+     *
+     * <p>{@link #reloadBindings} takes a {@link BindingRegistry}, and until now
+     * nothing on this class said where a consumer holding a stack of pack files was
+     * supposed to get one. {@code BindingLoader} did the work and was reachable, but
+     * a capability that has to be found by reading the source is not part of an API.
+     *
+     * <p>The returned {@link BindingLoader.Result} is the reason this is not
+     * {@code void}. One malformed file is skipped rather than blanking every
+     * dimension's look, and a binding overridden by a later pack is recorded too — a
+     * pack author whose work silently stopped applying deserves to know why.
+     * <strong>A caller that discards this has turned a loud failure into a silent
+     * one.</strong> Log {@link BindingLoader.Result#problems()}.
+     *
+     * <p>Applying is wholesale, exactly as {@link #reloadBindings} is, and for the
+     * same reason: a reload's files are the complete new set. Passing no files
+     * empties the registry, which is what removing the last pack should do.
+     *
+     * @param files pack file contents, keyed by whatever name should appear in an
+     *              error message — a path a pack author would recognise; null is
+     *              read as empty
+     * @return what loaded, and everything that went wrong loading it
+     */
+    @Experimental
+    public static BindingLoader.Result loadBindings(Map<String, String> files) {
+        BindingLoader.Result result = BindingLoader.load(files == null ? Map.of() : files);
+        reloadBindings(result.registry());
+        return result;
     }
 
     /**

@@ -1,0 +1,23 @@
+{
+  "id": "beyond_depths",
+  "dimension": "mcshaders:beyond",
+  "priority": 10,
+  "condition": { "type": "y_range", "min": 0.0, "max": 48.0 },
+  "stack": {
+    "layers": [
+      {
+        "id": "depth_fog",
+        "kind": "fog",
+        "type": "mcshaders:fog",
+        "blend": "alpha",
+        "weight": 1.0,
+        "priority": 0,
+        "params": {
+          "start": 1.0,
+          "end": 24.0,
+          "color": { "r": 0.039, "g": 0.078, "b": 0.094, "a": 1.0 }
+        }
+      }
+    ]
+  }
+}

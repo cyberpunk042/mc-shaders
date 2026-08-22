@@ -49,12 +49,28 @@ biome preset — a straight reuse, verified as a working pair in vanilla's own
 `dimension/the_nether.json`, so there is somewhere to stand without authoring
 noise settings.
 
+## The dynamic half
+
+`data/mcshaders/binding/beyond_depths.json` is the other side of the division of
+labour: fog that closes in below Y 48, which a `dimension_type` has no way to say.
+Above that depth mc-shaders contributes nothing and the static base above stands
+alone — that is the intended outcome, not a gap.
+
+There is deliberately no `beyond_base` restating the dimension's ordinary fog. The
+`dimension_type` already carries those numbers, and a second copy of a number is a
+number that drifts: the one a pack author edited would stop being the one in force,
+with nothing to say so.
+
+**This file is not loaded yet.** The reload listener that would read it is still
+ahead, so the mod registers the same binding in Java, from `BuiltinBindings`. The
+file is therefore documentation of the format — and documentation drifts, so a test
+parses this exact file and requires it to equal what the code registers. When the
+listener lands, the example is already known to be readable.
+
 ## What is not here yet
 
-The static look only. The dynamic half — conditions on time, Y, weather and biome,
-and transitions between looks — is an mc-shaders binding, and vanilla has no
-data-driven story for the post-processing effects on top. That is the division of
-labour: vanilla data sets the base, the mod layers what vanilla cannot express.
-
-And nothing reaches this dimension yet. The portal is code, and the 26.2 teleport
-API has not been established.
+The 26.2 teleport call is now established — see
+[../docs/PORTALS-26.2.md](../docs/PORTALS-26.2.md) — and finding a portal's opening
+does not need the frame's shape, so `core.portal.FrameScan` handles that. What is
+still missing is the block use event and block registration on 26.2, so nothing
+reaches this dimension yet.

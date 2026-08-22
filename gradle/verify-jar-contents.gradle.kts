@@ -40,6 +40,7 @@ val requiredClasses = listOf(
 val requiredResources = listOf(
     "data/mcshaders/dimension/beyond.json",
     "data/mcshaders/dimension_type/beyond.json",
+    "data/mcshaders/binding/beyond_depths.json",
 )
 
 val verifyJarContents = tasks.register("verifyJarContents") {
