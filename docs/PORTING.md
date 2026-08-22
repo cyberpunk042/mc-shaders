@@ -482,3 +482,31 @@ field. `Input` now carries it.
 
 The std140 rules the checker enforces are a GLSL and OpenGL matter and never
 depended on the Minecraft version.
+
+## Compiling the GLSL, which turned out not to need a GPU
+
+Every earlier note here said the one thing left for a driver was whether the GLSL
+compiles. That was wrong in a useful way: it needs a *compiler*, not a driver.
+Khronos' `glslangValidator` parses and type-checks a shader with no context and
+no hardware.
+
+Run over the corpus, **28 of 30 shader files compile clean**. The two that do not
+are `core/fresnel_entity.fsh` and `.vsh`, which use `#moj_import` — Minecraft's
+own include directive, which the game's loader expands and glslang rejects as
+unknown. That is a gap in the checker, not a defect in the shaders, so those are
+skipped rather than reported. Both are also files no chain reaches.
+
+The step is optional in the tool and installed in CI. The module stays pure Java
+with no native dependency, because demanding an external binary to run *any* of
+it would make it harder to adopt than the problems it finds are worth; CI
+installs `glslang-tools` so the stronger check is the one that actually runs
+there.
+
+**What a pass means.** glslang is the reference front end, not the driver that
+will run the shader. A pass means the source is valid GLSL — the overwhelming
+majority of what goes wrong — not that a given driver accepts it, and certainly
+not that it draws what was intended. Those remain a GPU's business.
+
+One reporting detail worth keeping: when everything compiles, the checker *says
+so*, naming the validator's version. Silence would be indistinguishable from the
+step not having run, which is the failure mode of every optional check.

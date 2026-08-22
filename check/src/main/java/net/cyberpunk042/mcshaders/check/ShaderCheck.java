@@ -13,6 +13,7 @@ import net.cyberpunk042.mcshaders.core.chain.ChainValidator;
 import net.cyberpunk042.mcshaders.core.chain.Pass;
 import net.cyberpunk042.mcshaders.core.chain.PostChain;
 import net.cyberpunk042.mcshaders.core.glsl.IncludeResolver;
+import net.cyberpunk042.mcshaders.core.glsl.ResolvedShader;
 import net.cyberpunk042.mcshaders.core.layout.LayoutMismatch;
 
 /**
@@ -41,11 +42,13 @@ public final class ShaderCheck {
 
     private final ResourceTree tree;
     private final ChainValidator validator;
+    private final GlslCompiler compiler;
     private final boolean quiet;
 
     ShaderCheck(ResourceTree tree, boolean quiet) {
         this.tree = tree;
         this.validator = new ChainValidator(tree, HOST_TARGETS);
+        this.compiler = new GlslCompiler();
         this.quiet = quiet;
     }
 
@@ -67,6 +70,7 @@ public final class ShaderCheck {
     int run() throws IOException {
         List<Path> chains = tree.chains();
         Set<String> reached = new LinkedHashSet<>();
+        List<String> compileFailures = new ArrayList<>();
         int sound = 0;
         int withErrors = 0;
 
@@ -77,6 +81,7 @@ public final class ShaderCheck {
                 PostChain chain = PostChainCodec.read(reader);
                 problems = keepReportable(chain, validator.validate(chain));
                 reached.addAll(filesReachedBy(chain));
+                compileFailures.addAll(compile(chain));
             } catch (RuntimeException e) {
                 System.out.println("### " + name);
                 System.out.println("    UNREADABLE: " + e.getMessage());
@@ -102,8 +107,61 @@ public final class ShaderCheck {
         }
 
         reportOrphans(reached);
+        reportCompilation(compileFailures);
         System.out.printf("%n%d chain(s): %d sound, %d with errors%n", chains.size(), sound, withErrors);
-        return withErrors == 0 ? 0 : 1;
+        return withErrors == 0 && compileFailures.isEmpty() ? 0 : 1;
+    }
+
+    /**
+     * Compiles each of a chain's shaders, if a validator is available.
+     *
+     * <p>This is the one check that needs a compiler rather than a reading of the
+     * text — and, as it turns out, not a GPU.
+     */
+    private List<String> compile(PostChain chain) {
+        if (!compiler.isAvailable()) {
+            return List.of();
+        }
+        IncludeResolver resolver = new IncludeResolver(tree);
+        List<String> failures = new ArrayList<>();
+        for (Pass pass : chain.passes()) {
+            for (String shader : List.of(pass.vertexShader(), pass.fragmentShader())) {
+                if (tree.read(shader).isEmpty()) {
+                    continue;
+                }
+                ResolvedShader resolved = resolver.resolve(shader);
+                if (resolved.hasErrors()) {
+                    // Its includes are already reported; compiling half a shader would
+                    // report the same problem again wearing a compiler's words.
+                    continue;
+                }
+                String stage = shader.endsWith(".vsh") ? "vert" : "frag";
+                for (String error : compiler.compile(resolved.source(), stage)) {
+                    failures.add(shader + ": " + error);
+                }
+            }
+        }
+        return failures;
+    }
+
+    private void reportCompilation(List<String> failures) {
+        if (!compiler.isAvailable()) {
+            System.out.println();
+            System.out.println("GLSL was not compiled: glslangValidator is not on the path.");
+            System.out.println("Install it (Debian/Ubuntu: glslang-tools) for a stronger check.");
+            return;
+        }
+        if (failures.isEmpty()) {
+            // Say so. Silence here would be indistinguishable from the check not
+            // having run, which is the failure mode of every optional check.
+            System.out.printf("%nGLSL compiled clean (%s).%n",
+                    compiler.version().orElse("glslangValidator"));
+            return;
+        }
+        System.out.printf("%n%d GLSL compile error(s):%n", failures.size());
+        for (String failure : new LinkedHashSet<>(failures)) {
+            System.out.println("    " + failure);
+        }
     }
 
     /**
