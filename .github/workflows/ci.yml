@@ -73,6 +73,12 @@ jobs:
       - name: Install the GLSL reference validator
         run: sudo apt-get update -qq && sudo apt-get install -y glslang-tools
 
+      # The compile tests are @EnabledIf the validator is present, so a failed or
+      # relocated install would skip them and leave the job green — the exact
+      # silence the checker itself guards against. Fail loudly instead.
+      - name: Confirm the validator is actually usable
+        run: glslangValidator --version
+
       - name: Test
         working-directory: check
         run: ../gradlew test --console=plain
