@@ -139,8 +139,10 @@ sources open.
 
 Make it draw something.
 
-- Confirm 26.2's post-processing entry points against real sources — **do not
-  write this from memory**, the API is new and unverified here
+- ~~Confirm 26.2's post-processing entry points against real sources~~ — started:
+  see [RENDERING-26.2.md](RENDERING-26.2.md). The engine-wide changes are
+  confirmed and written down; the Fabric-specific hook points are **still
+  unresearched** and belong with the first M2 commit
 - `OpenGLBackend` implementing `EffectBackend`, registered through the same
   `BackendFactory` path third parties use — if the built-in renderer needs privileged
   access, that is a gap in the public API
