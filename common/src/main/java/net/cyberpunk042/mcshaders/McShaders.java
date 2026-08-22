@@ -3,6 +3,7 @@ package net.cyberpunk042.mcshaders;
 import java.util.function.Consumer;
 import net.cyberpunk042.mcshaders.core.backend.EffectBackend;
 import net.cyberpunk042.mcshaders.core.backend.NoOpBackend;
+import net.cyberpunk042.mcshaders.core.ShaderPipeline;
 import net.cyberpunk042.mcshaders.core.binding.BindingRegistry;
 
 /**
@@ -26,6 +27,7 @@ public final class McShaders {
 
     private static BindingRegistry registry = BindingRegistry.empty();
     private static EffectBackend backend = new NoOpBackend();
+    private static ShaderPipeline pipeline;
     private static Consumer<String> log = message -> { };
     private static boolean initialised;
     private static boolean registrationComplete;
@@ -50,6 +52,10 @@ public final class McShaders {
         // Before any third party registers, so a mod that wants to see what is
         // already present can, and so the built-ins cannot lose a name race.
         BuiltinEffects.register();
+        // After the effects, because a binding names an effect type and a mod
+        // reading the registries mid-init should not see a look referring to
+        // something that is not there yet.
+        BuiltinBindings.register();
         log.accept(MOD_NAME + " common init — API " + McShadersAPI.API_VERSION);
     }
 
@@ -77,6 +83,13 @@ public final class McShaders {
         EffectBackend selected = McShadersAPI.backends().select(reason -> log.accept("  " + reason));
         backend = selected;
 
+        // Build the thing that actually uses all of the above. Until this existed,
+        // registration filled a registry nothing read: bindings accumulated, the
+        // registry was set, and no ShaderPipeline was ever constructed anywhere in
+        // the mod, so the per-frame entry point could not be called even in
+        // principle. Three working pieces with nothing joining them.
+        pipeline = new ShaderPipeline(selected, registry, McShadersAPI.effects());
+
         // Not "third-party": the built-ins live in the same registry, so that
         // wording became wrong the moment BuiltinEffects.register() was added.
         log.accept(MOD_NAME + " ready — backend '" + selected.id()
@@ -90,8 +103,36 @@ public final class McShaders {
         return registry;
     }
 
+    /**
+     * Swaps the binding set, as a datapack reload does.
+     *
+     * <p>Reaches the live pipeline as well as the stored field. Updating only the
+     * field would leave a running pipeline resolving against the bindings it was
+     * constructed with — a reload that appears to work and changes nothing, which
+     * is worse than one that fails.
+     *
+     * <p>Before the pipeline exists there is nothing to update; the registry stored
+     * here is what it will be built with.
+     */
     public static synchronized void setRegistry(BindingRegistry newRegistry) {
         registry = newRegistry == null ? BindingRegistry.empty() : newRegistry;
+        if (pipeline != null) {
+            pipeline.setRegistry(registry);
+        }
+    }
+
+    /**
+     * The pipeline that drives a frame, closing registration on first call.
+     *
+     * <p>Internal, like the rest of this class: the render hook owns calling
+     * {@code frame}, and a second caller driving it would advance transitions twice
+     * per tick. What a third party wants is {@link McShadersAPI#bindings()} to read
+     * the bindings, or {@link McShadersAPI#look} to ask what a world state resolves
+     * to — neither of which can disturb the frame.
+     */
+    public static synchronized ShaderPipeline pipeline() {
+        completeRegistration();
+        return pipeline;
     }
 
     /**

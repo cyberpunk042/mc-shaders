@@ -2,15 +2,20 @@ package net.cyberpunk042.mcshaders;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import net.cyberpunk042.mcshaders.codec.BindingLoader;
+import net.cyberpunk042.mcshaders.core.api.Experimental;
 import net.cyberpunk042.mcshaders.core.api.Stable;
 import net.cyberpunk042.mcshaders.core.backend.BackendFactory;
 import net.cyberpunk042.mcshaders.core.backend.BackendRegistry;
 import net.cyberpunk042.mcshaders.core.binding.BindingRegistry;
 import net.cyberpunk042.mcshaders.core.binding.DimensionBinding;
+import net.cyberpunk042.mcshaders.core.binding.WorldState;
+import net.cyberpunk042.mcshaders.core.edit.TuningStore;
 import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectRegistry;
+import net.cyberpunk042.mcshaders.core.effect.EffectStack;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
-import net.cyberpunk042.mcshaders.core.edit.TuningStore;
 import net.cyberpunk042.mcshaders.core.schema.SchemaRegistry;
 
 /**
@@ -178,6 +183,95 @@ public final class McShadersAPI {
      */
     public static TuningStore tuning() {
         return TUNING;
+    }
+
+    /**
+     * The dimension bindings currently in force.
+     *
+     * <p>This was missing, and its absence was asymmetric: every other registry here
+     * had a reader, so a mod could contribute a dimension's look and then have no
+     * supported way to ask what the look actually became — whether its binding won,
+     * what another mod had already said about that dimension, or whether a datapack
+     * had replaced the lot.
+     *
+     * <p>Reading closes registration, because the answer is not meaningful until
+     * every mod has had its turn.
+     */
+    public static BindingRegistry bindings() {
+        McShaders.completeRegistration();
+        return McShaders.registry();
+    }
+
+    /**
+     * What a dimension looks like in a given world state.
+     *
+     * <p>The question a consumer actually has — "what is in force here?" — answered
+     * without handing out the per-frame driver. Merging is by layer id and ascending
+     * priority, so this is the same stack the renderer would draw.
+     *
+     * <p>A read. It advances no transition and disturbs no frame, so calling it from
+     * a command, a HUD or another mod's logic is safe.
+     */
+    public static EffectStack look(WorldState state) {
+        if (state == null) {
+            throw new IllegalArgumentException("Cannot resolve a look for a null world state");
+        }
+        return bindings().resolve(state);
+    }
+
+    /**
+     * Replaces every binding, as a datapack reload does.
+     *
+     * <p>Deliberately allowed <em>after</em> registration closes, which is what
+     * separates it from {@link #registerBinding}. Registration is a startup
+     * accumulation and is closed once so that mods cannot race; a reload is a
+     * runtime replacement and is the whole point of datapack-driven looks. Refusing
+     * it after close would mean {@code /reload} could never change anything.
+     *
+     * <p>It reaches the running pipeline, so the next frame resolves against the new
+     * bindings and eases toward them rather than snapping.
+     *
+     * <p>Wholesale, not a merge: a reload's result is the complete new set, and
+     * merging would leave bindings from a pack the player has just removed.
+     *
+     * @param replacement the new set; null is read as empty, which is what a reload
+     *                    that found no binding files legitimately produces
+     */
+    @Experimental
+    public static void reloadBindings(BindingRegistry replacement) {
+        McShaders.completeRegistration();
+        McShaders.setRegistry(replacement);
+    }
+
+    /**
+     * Reads pack files into bindings and puts them in force.
+     *
+     * <p>{@link #reloadBindings} takes a {@link BindingRegistry}, and until now
+     * nothing on this class said where a consumer holding a stack of pack files was
+     * supposed to get one. {@code BindingLoader} did the work and was reachable, but
+     * a capability that has to be found by reading the source is not part of an API.
+     *
+     * <p>The returned {@link BindingLoader.Result} is the reason this is not
+     * {@code void}. One malformed file is skipped rather than blanking every
+     * dimension's look, and a binding overridden by a later pack is recorded too — a
+     * pack author whose work silently stopped applying deserves to know why.
+     * <strong>A caller that discards this has turned a loud failure into a silent
+     * one.</strong> Log {@link BindingLoader.Result#problems()}.
+     *
+     * <p>Applying is wholesale, exactly as {@link #reloadBindings} is, and for the
+     * same reason: a reload's files are the complete new set. Passing no files
+     * empties the registry, which is what removing the last pack should do.
+     *
+     * @param files pack file contents, keyed by whatever name should appear in an
+     *              error message — a path a pack author would recognise; null is
+     *              read as empty
+     * @return what loaded, and everything that went wrong loading it
+     */
+    @Experimental
+    public static BindingLoader.Result loadBindings(Map<String, String> files) {
+        BindingLoader.Result result = BindingLoader.load(files == null ? Map.of() : files);
+        reloadBindings(result.registry());
+        return result;
     }
 
     /**
