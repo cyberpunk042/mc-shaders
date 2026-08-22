@@ -224,9 +224,21 @@ counting slots calls it what it is.
 | `ShockwaveConfig` | truncated at byte 144 | shader reads `ShapeType` onward; the host stops before it |
 | `VirusBlockParams` | truncated at byte 288 | `BlockPos` is `vec4[32]`; only element 0 is ever written |
 
-One caveat, stated because it changes how much the size figures mean: the mod's
-`PostEffectPassMixin` builds and substitutes its own buffer rather than filling
-the one the pipeline JSON declares, so the JSON's byte total is not necessarily
-what the GPU sees. The *divergence offsets* above do not depend on that — they
-are a disagreement between the shader and the record that writes it — but any
-claim about a short buffer does.
+### Which pair of declarations was compared
+
+The table above compares the **pipeline JSON against the GLSL**. Two caveats
+follow from that, and both matter before acting on it:
+
+- The **Java record agrees with the GLSL** on the two things that were checked:
+  both come to 928 bytes, and both put their two `mat4` members at slots 33 and
+  37. Per-member names between record and GLSL were *not* compared — that needs
+  the ~50 nested `@Vec4` types expanded — so "the record is correct" is not
+  established here, only "the record is not obviously misaligned".
+- `PostEffectPassMixin` builds and substitutes its own buffer rather than filling
+  the one the pipeline JSON declares, so the JSON's byte total is not necessarily
+  what the GPU sees. That does not make the divergence harmless — the JSON is
+  still one of three declarations of one layout, and it disagrees with the other
+  two — but it does mean the short-buffer reading is unproven.
+
+Settling it needs either the record's members expanded and compared, or the
+thing no static check can do: running it.
