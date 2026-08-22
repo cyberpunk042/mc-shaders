@@ -180,9 +180,15 @@ tooltips. That is worth copying rather than merely noting: a screen built entire
 from widgets does not touch the one part of this API that changed most, so it is
 the shape least likely to be wrong.
 
-These are read from source, not compiled. They are strong evidence and not yet
-proof; the build is what turns them into proof, and CI compiles the loader modules
-against real 26.2.
+These were read from source rather than remembered, and are now **compiled**: the
+screen and keybind built on every call above went through CI's `Fabric + NeoForge`
+job against real Minecraft 26.2 and passed on the first attempt. That is the
+difference between strong evidence and proof, and it is worth stating which one
+this is — the whole reason for reading Jade rather than typing from memory was
+that a wrong signature here costs a CI round-trip apiece, and reading cost none.
+
+The same table is therefore safe to build on. The list of what did *not* change is
+proven by the same run.
 
 ## Cross-references
 
