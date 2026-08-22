@@ -366,3 +366,40 @@ The scratch script ignored the JSON's `count` field; the pipeline declares
 `BlockPos` with `count: 32` and matches the shader exactly. The library was
 right and the script was wrong — which is the argument for the library, and the
 reason a finding from a scratch tool is a hypothesis until the real one agrees.
+
+
+## The editing schema
+
+The mod carries a 40,000-line GUI. Most of it is Minecraft `Screen` plumbing and
+stays where it is, but measuring the coupling the same way as before found a
+clean layer inside it: `schema`, `state`, `annotation` and their neighbours —
+around 54 files with no `net.minecraft` import.
+
+The most self-contained part of that is the descriptor layer, and it is what
+`core.schema` now is. An effect's parameters are a flat map at runtime, which is
+right for the render path and useless for editing: nothing in it says which of
+forty numbers belong together, what any of them is called, or what a sane value
+looks like. A schema supplies exactly that and holds no values itself.
+
+It is not a copy. Three things changed on the way across, each because the
+original shape caused a problem worth not repeating:
+
+| Upstream | Here | Why |
+|---|---|---|
+| every value is a `float`; a toggle is `0f`/`1f` | the default is a `ParamValue` | a colour is one control, not four unrelated sliders — which is a large part of why `FieldVisualConfig` has two hundred entries |
+| `min`/`max`/`step` restated per parameter | `Bounds.of(ValueRange)` | the project already has a vocabulary of named ranges; restating `0f, 1f` by hand drifts from it silently |
+| nothing checks the default against the control | the constructor refuses it | a `COLOR` defaulting to a scalar gives an editor that looks correct and cannot round-trip its own starting value |
+
+Two behaviours are worth stating because they are easy to get backwards:
+
+- **An override keeps the original position.** A later version narrowing or
+  relabelling an inherited parameter should not make the panel jump around, so
+  the last declaration wins on content and the first wins on placement.
+- **Coercion leaves unknown keys alone.** An editor is not the only thing that
+  writes parameters. Dropping what a schema does not recognise would make opening
+  a panel destructive.
+
+The schema registry — which effects exist and what each exposes — is content, not
+engine, and stays in the mod. `SchemaContentBuilder`, which turns specs into
+Minecraft widgets, is plumbing and stays too. What crosses is the description,
+which is the part any front end needs and none of them should own.
