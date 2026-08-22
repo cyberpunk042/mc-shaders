@@ -403,3 +403,26 @@ The schema registry — which effects exist and what each exposes — is content
 engine, and stays in the mod. `SchemaContentBuilder`, which turns specs into
 Minecraft widgets, is plumbing and stays too. What crosses is the description,
 which is the part any front end needs and none of them should own.
+
+### Auditing a schema against the effect it describes
+
+A schema and an effect's parameters are two declarations of one thing — what an
+effect is tunable by — and nothing keeps them in step. That is the third time
+this shape has come up here, after the include graph and the uniform blocks, and
+the failures are quiet in the same way:
+
+| Finding | What it means |
+|---|---|
+| `UNBACKED` | a control is offered for a key the effect does not carry, so dragging it does nothing |
+| `UNREACHABLE` | the effect carries a parameter no control reaches, so it cannot be edited |
+| `SHAPE_MISMATCH` | the effect holds a colour where the schema offers a slider, or similar |
+| `DEFAULT_OUT_OF_RANGE` | the effect ships a value its own editor would refuse |
+
+The last is the sharpest, and the reason `SchemaAudit` exists rather than the
+schema simply being trusted. A default outside its own declared range is changed
+the first time someone opens the panel and closes it again — so a fresh install
+and an edited one render differently, from a control nobody touched. Nothing
+about that is visible while it happens.
+
+`UNREACHABLE` is informational rather than a failure: an effect may legitimately
+carry parameters that are not meant to be edited by hand.

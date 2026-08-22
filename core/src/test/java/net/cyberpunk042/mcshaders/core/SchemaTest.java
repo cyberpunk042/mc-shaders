@@ -12,6 +12,8 @@ import net.cyberpunk042.mcshaders.core.schema.Bounds;
 import net.cyberpunk042.mcshaders.core.schema.ControlKind;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
 import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
+import net.cyberpunk042.mcshaders.core.schema.SchemaAudit;
+import net.cyberpunk042.mcshaders.core.schema.SchemaProblem;
 import net.cyberpunk042.mcshaders.core.validation.ValueRange;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
@@ -220,6 +222,69 @@ class SchemaTest {
         void versionsStartAtOne() {
             assertThrows(IllegalArgumentException.class,
                     () -> EffectSchema.builder("Orb", "energy_orb", 0).build());
+        }
+    }
+
+    @Nested
+    @DisplayName("auditing a schema against what an effect carries")
+    class Audit {
+
+        private final EffectSchema schema = EffectSchema.builder("Orb", "energy_orb", 1)
+                .group("Core",
+                        ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"),
+                        ParamSpec.toggle("core.glow", "Glow", true, "Core"))
+                .build();
+
+        @Test
+        void amatchingPairAgrees() {
+            assertTrue(SchemaAudit.agree(schema, schema.defaults()),
+                    () -> SchemaAudit.audit(schema, schema.defaults()).toString());
+        }
+
+        @Test
+        @DisplayName("a control bound to a key the effect lacks does nothing when dragged")
+        void aControlWithNothingBehindItIsReported() {
+            EffectParams effect = EffectParams.builder().flag("core.glow", true).build();
+
+            List<SchemaProblem> problems = SchemaAudit.audit(schema, effect);
+
+            assertEquals(SchemaProblem.Kind.UNBACKED, problems.get(0).kind());
+            assertEquals("core.size", problems.get(0).key());
+        }
+
+        @Test
+        @DisplayName("a parameter no control reaches is not editable, and is worth saying")
+        void anUnreachableParameterIsReported() {
+            EffectParams effect = schema.defaults().with("hidden.knob", new ParamValue.Scalar(1));
+
+            List<SchemaProblem> problems = SchemaAudit.audit(schema, effect);
+
+            assertEquals(1, problems.size());
+            assertEquals(SchemaProblem.Kind.UNREACHABLE, problems.get(0).kind());
+            assertTrue(SchemaAudit.agree(schema, effect), "informational, not a failure");
+        }
+
+        @Test
+        @DisplayName("a shipped default outside its own declared range changes on first open")
+        void anOutOfRangeDefaultIsReported() {
+            // A fresh install and an install where someone opened the panel and closed
+            // it again would then render differently, from a control nobody touched.
+            EffectParams effect = schema.defaults().with("core.size", new ParamValue.Scalar(5));
+
+            List<SchemaProblem> problems = SchemaAudit.audit(schema, effect);
+
+            assertEquals(SchemaProblem.Kind.DEFAULT_OUT_OF_RANGE, problems.get(0).kind());
+            assertTrue(problems.get(0).detail().contains("1.0"), problems.get(0).detail());
+        }
+
+        @Test
+        void aValueOfTheWrongShapeIsAnError() {
+            EffectParams effect = schema.defaults().with("core.glow", new ParamValue.Scalar(1));
+
+            List<SchemaProblem> problems = SchemaAudit.audit(schema, effect);
+
+            assertEquals(SchemaProblem.Kind.SHAPE_MISMATCH, problems.get(0).kind());
+            assertTrue(problems.get(0).isError());
         }
     }
 }
