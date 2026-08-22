@@ -215,8 +215,11 @@ Make it authorable without Java.
 - Datapack loading from `data/<ns>/mcshaders/bindings/*.json` — **half done**:
   `BindingLoader` turns a set of files into a registry, skipping the broken ones
   rather than blanking every dimension over one typo, and reporting what it
-  skipped and what overrode what. Handing it the files is the part that still
-  needs Minecraft's resource manager
+  skipped and what overrode what. `McShadersAPI.loadBindings(Map)` is the
+  documented way in, and there is one real file at that path already —
+  `beyond_depths.json`, pinned by a test that requires it to equal the binding the
+  mod registers in Java. Handing the loader the files is the part that still needs
+  Minecraft's resource manager
 - Reload handling — build a fresh registry, swap atomically, ease into it.
   `McShaders.setRegistry` is the swap and `Transition` is the easing; what is
   missing is the reload event that calls them

@@ -33,7 +33,8 @@ import org.junit.jupiter.api.Test;
  */
 class BuiltinBindingsTest {
 
-    private static final String PACK_PATH = "datapack/data/mcshaders/binding/beyond_depths.json";
+    private static final String PACK_PATH =
+            "datapack/data/mcshaders/mcshaders/bindings/beyond_depths.json";
 
     /**
      * Finds the shipped pack file by walking up from wherever the test is running.
