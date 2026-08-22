@@ -294,3 +294,34 @@ Vanilla shader ids (`minecraft:post/blit`, `minecraft:post/sobel`) resolve
 through the resource manager in game. A checker pointed at a mod's asset tree
 alone will not find them, which is a property of the provider it is given, not of
 the chain.
+
+
+## Running the check without the game
+
+`core` models chains and checks them; it does not parse. `check/` is the module
+that closes the loop — a JSON codec, a resource-tree `SourceProvider`, and a CLI:
+
+```sh
+cd check && ../gradlew run --args="/path/to/assets"
+```
+
+It is a separate build with no Minecraft dependency for the same reason `core`
+is, plus one specific to it: a shader pack should be checkable in someone else's
+CI, by someone with no interest in building this mod.
+
+Two rules in the codec are load-bearing and neither is obvious from a sample of
+the format:
+
+- **A uniform entry's position is its layout.** The list is not a bag of named
+  values; it is the std140 declaration of the block, and each entry's index
+  decides which bytes the shader reads it from. So the codec preserves order
+  exactly, and refuses an unknown type rather than skipping the entry — skipping
+  one would shift every later member and produce a confident, wrong comparison.
+- **`value` is ignored.** Defaults do not affect layout, and layout is the
+  question.
+
+The checker also has to distinguish *missing* from *elsewhere*. A chain naming
+`minecraft:post/blit` is not broken because the game's own shaders are not in the
+mod's asset tree; `ResourceTree.isExternal` reports that a namespace is absent
+entirely, and findings about those ids are dropped. Without it every chain in the
+corpus reports two missing shaders, which is exactly how a checker gets ignored.

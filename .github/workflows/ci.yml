@@ -49,6 +49,50 @@ jobs:
           if-no-files-found: warn
 
   # ───────────────────────────────────────────────────────────────────────────
+  # The shader-pack checker: also pure Java, and also its own build, so that a
+  # pack can be validated without the game or a GPU. Authoritative.
+  # ───────────────────────────────────────────────────────────────────────────
+  check:
+    name: Checker (pure Java)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Test
+        working-directory: check
+        run: ../gradlew test --console=plain
+
+      # Dogfooding: the checker is run over this repository's own resources. It
+      # passes vacuously while there are none, and starts guarding them the moment
+      # any are added — which is the point of wiring it up before there are.
+      - name: Check this repository's own shader resources
+        working-directory: check
+        run: |
+          for tree in ../common/src/main/resources/assets ../fabric/src/main/resources/assets; do
+            if [ -d "$tree" ]; then
+              echo "checking $tree"
+              ../gradlew run --args="$tree" --console=plain -q
+            fi
+          done
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: check-test-results
+          path: check/build/test-results/test/*.xml
+          if-no-files-found: warn
+
+  # ───────────────────────────────────────────────────────────────────────────
   # The shared Minecraft-facing module. It depends only on the core and Maven
   # Central — no Minecraft Maven — so it is also authoritative. This is what
   # proves the composite substitution and the JDK 25 toolchain actually work.

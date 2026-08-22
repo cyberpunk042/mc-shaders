@@ -74,6 +74,7 @@ Full guide, including how to implement a backend:
 
 ```
 core/       the framework — pure Java, zero Minecraft dependencies
+check/      shader-pack checker — pure Java, runs without the game
 common/     Minecraft-facing code shared across loaders
 fabric/     Fabric adapter
 neoforge/   NeoForge adapter
@@ -91,6 +92,12 @@ Maven hosts:
 cd core && ../gradlew test
 ```
 
+So does the checker:
+
+```sh
+cd check && ../gradlew test
+```
+
 The shared module needs JDK 25, but still no Minecraft Maven:
 
 ```sh
@@ -102,6 +109,31 @@ The loader modules additionally need reachable Fabric/NeoForge Maven:
 ```sh
 ./gradlew build
 ```
+
+## Checking a shader pack
+
+A post-processing chain is bound to its shaders by convention and to its uniform
+blocks by *byte offset*. Nothing in the normal toolchain checks either. A shader
+that moved leaves a chain that loads, catches its own exception and silently does
+nothing; a uniform block whose two declarations have drifted apart leaves a shader
+reading real numbers from the wrong places. Neither produces an error anywhere.
+
+`check/` finds both, from text, with no GPU and no game:
+
+```sh
+cd check && ../gradlew run --args="/path/to/assets"
+```
+
+It walks every `post_effect/*.json` under that directory and reports missing
+shaders, unresolved includes, targets read before they are written, targets
+nothing reads, inputs whose sampler the shader does not declare, and uniform
+blocks the pipeline and the shader disagree about — with the byte offset where
+the disagreement starts. It exits non-zero on errors, so it can gate a build.
+Warnings and notes are printed and do not fail.
+
+Being a separate build with no Minecraft dependency is deliberate: a pack should
+be checkable in someone else's CI, by someone with no interest in building this
+mod.
 
 ## How it works
 
