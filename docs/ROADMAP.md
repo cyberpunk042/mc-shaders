@@ -169,10 +169,16 @@ correct result rather than a failure.
 
 Make it draw something.
 
-- ~~Confirm 26.2's post-processing entry points against real sources~~ — started:
-  see [RENDERING-26.2.md](RENDERING-26.2.md). The engine-wide changes are
-  confirmed and written down; the Fabric-specific hook points are **still
-  unresearched** and belong with the first M2 commit
+- ~~Confirm 26.2's post-processing entry points against real sources~~ — partly
+  done: see [RENDERING-26.2.md](RENDERING-26.2.md). The engine-wide changes are
+  confirmed; **the fog entry point is now established** — `FogRenderer#setupFog`
+  in the new `net.minecraft.client.renderer.fog` package, read out of a mod that
+  compiles on 26.2, along with camera, render-state and partial-tick access. The
+  **post-effect chain** hook points are still unread, and still need either the
+  26.2 sources or a 26.2 mod doing post-processing
+- Because of that split, the fog binding is the part of this milestone that is
+  unblocked — and it is what the done-when below actually asks for. The full
+  chain is not
 - `OpenGLBackend` implementing `EffectBackend`, registered through the same
   `BackendFactory` path third parties use — if the built-in renderer needs privileged
   access, that is a gap in the public API
