@@ -72,15 +72,32 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Key | Value | Status | Source |
 |---|---|---|---|
-| `fabric_loom_version` | `1.15.5` | **Verified in CI** | `1.15-SNAPSHOT` resolved to Loom 1.15.5 on a runner; now pinned concretely for reproducibility. |
+| `fabric_loom_version` | `1.17` | **Pending CI** | Fabric's **26.2** announcement names Loom 1.17. Was `1.15.5`, taken from the 26.1 announcement — it resolved, but see *26.1-era tooling* below. |
 | `moddevgradle_version` | `2.0.141` | **Verified in CI** | Gradle Plugin Portal listing for `net.neoforged.moddev` |
-| `gradle_version` | `9.4.0` | **Verified** | Pinned in the committed wrapper; confirmed present in the Gradle version index and downloaded successfully. |
+| `gradle_version` | `9.5.1` | **Verified** | Fabric's 26.2 announcement names Gradle 9.5.1. Bumped from `9.4.0`; the wrapper downloaded it and the core build passes on it locally. |
 | `java_version` | `25` | **Verified in CI** | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
-| `mc_26_2_fabric_loader` | `0.18.4` | **Verified in CI** | Fabric's 26.1 announcement, latest stable loader |
+| `mc_26_2_fabric_loader` | `0.19.3` | **Pending CI** | Fabric's 26.2 announcement, latest stable loader. Was `0.18.4` — a `26_2` coordinate sourced from the **26.1** announcement. |
 | `mc_26_2_fabric_api` | `0.157.0+26.2` | **Verified in CI** | Modrinth version listing, published 2026-08-10 |
 | Fabric Loom plugin id | `net.fabricmc.fabric-loom` | **Verified in CI** | The legacy `fabric-loom` id resolved, then failed with "Failed to find official mojang mappings for 26.2". See below. |
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Verified in CI** | Started as the least confident value in the table, derived from the documented `26.2.0.x` prefix scheme; it resolved and built. Newer builds exist (the Maven listing shows at least `26.2.0.62`), so this is a deliberate pin, not the latest. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
+
+## 26.1-era tooling under a 26.2 target
+
+The toolchain rows above were originally taken from Fabric's **26.1**
+announcement, because that was the most recent source available when this build
+was bootstrapped. Fabric's 26.2 announcement raises them: Loom 1.17, Gradle
+9.5.1, loader 0.19.3.
+
+Nothing failed, and that is the part worth writing down. CI was green on the old
+values throughout — because `common/`, `fabric/` and `neoforge/` contain no
+Minecraft API usage at all, so the build only ever proved that the plugins
+*resolve*. Resolution is not the same as the toolchain being correct for the
+version being targeted, and the difference would first appear as a confusing
+failure in whoever wrote the first real Minecraft code.
+
+The lesson generalises past this table: a green build over an empty module says
+nothing about the module.
 
 ## Retargeting to 26.3 when it releases
 
