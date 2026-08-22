@@ -147,12 +147,6 @@ Everything that was blocked on a source now has one:
   from the struck position.
 - A `Result` that `isPortal()` fills the interior; anything else returns
   `TRY_WITH_EMPTY_HAND` so the block behaves normally when it is not a frame.
-- Entering the portal block teleports via the chain in
-  [PORTALS-26.2.md](PORTALS-26.2.md).
-
-## What is still unread
-
-The portal block's own tick and entity-inside behaviour — what vanilla's
-`NetherPortalBlock` does with `entityInside`, and the cooldown that stops a player
-oscillating between dimensions. That has not been read on 26.2 and should not be
-guessed; the same method applies when it is needed.
+- The portal block itself does **not** teleport. See
+  [PORTALS-26.2.md](PORTALS-26.2.md) — an earlier draft of this line said it did,
+  and that was wrong.

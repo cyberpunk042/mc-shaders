@@ -87,6 +87,88 @@ NeoTeleport has neither: it is command-driven, registering no blocks and handlin
 no block interaction. The sources for those are Fabric API's own 26.2 branch,
 Blockus and PolyDecorations.
 
-What remains unread is the portal block's tick and entity-inside behaviour — what
-vanilla does when someone stands in one, and the cooldown that stops a player
-oscillating between dimensions.
+## A portal block does not teleport
+
+This corrects the plan the rest of this document was written around. Reading what
+vanilla actually does, rather than assuming a portal calls the teleport above,
+changes the design.
+
+Vanilla's `NetherPortalBlock.entityInside` is this, in full:
+
+```java
+if (entity.canUsePortal(false)) {
+    entity.setAsInsidePortal(this, pos);
+}
+```
+
+That is the whole body. It registers the entity as being in a portal and returns.
+`Entity#handlePortal()`, driven from `baseTick()`, ticks that registration on later
+frames and asks the block for a destination when it matures:
+
+```java
+public @Nullable TeleportTransition getPortalDestination(
+        ServerLevel currentLevel, Entity entity, BlockPos portalEntryPos)
+```
+
+`EndPortalBlock` and `EndGatewayBlock` have the same shape, which is three
+implementations agreeing rather than one example.
+
+**So the block supplies a destination; the entity machinery performs the travel.**
+Calling `teleport(TeleportTransition)` from `entityInside` would teleport on the
+first tick of contact, which is not how a portal feels, and would skip the
+machinery entirely.
+
+That machinery is also the answer to oscillation, which is worth being explicit
+about because the obvious workaround is worse than the thing it replaces.
+`canUsePortal` consults a cooldown that `setAsInsidePortal` maintains, and it
+persists as the NBT key `PortalCooldown`. Hand-rolling a `Map<UUID, Long>` — which
+is what a command-driven mod like NeoTeleport legitimately does, having no portal —
+would not survive a relog and would not stop a mob.
+
+The teleport chain earlier in this document is still correct; it is simply the
+answer to a different question. It is how a *command* teleports. A portal block
+should implement the interface and let vanilla call it.
+
+## The hook signature changed on 26.2
+
+```java
+protected void entityInside(BlockState state, Level level, BlockPos pos, Entity entity,
+                            InsideBlockEffectApplier effectApplier, boolean isPrecise)
+```
+
+Six parameters, returning `void`. On 1.21.x this was four — `InsideBlockEffectApplier`
+(in `net.minecraft.world.entity`) and `isPrecise` are both new, so a remembered
+override silently fails to override anything.
+
+Confirmed from two independent trees, and from an argument order rather than a
+declaration alone: NeoForge `26.2.x` (`patches/.../CropBlock.java.patch:55`) carries
+the declaration as unchanged context, and Paper at `mcVersion=26.2`
+(`patches/sources/.../LilyPadBlock.java.patch:8`) carries
+`super.entityInside(state, level, pos, entity, effectApplier, isPrecise)`, which
+pins the order. Both files are diffs against Mojang-mapped 26.2 source, so a context
+line is verbatim vanilla.
+
+`Fluid` has a similar but *different* overload — no `BlockState`, no `isPrecise` —
+which is the kind of near-match that gets copied by accident.
+
+## What is still unverified
+
+Read this before writing code against any of it. Each of these is either absent from
+every 26.2 source reachable here, or attested only by a version-unpinned mapping
+dump, which is not evidence about 26.2:
+
+- **`Entity#isOnPortalCooldown()`** and **`getDimensionChangingDelay()`** — zero
+  occurrences across Paper 26.2 and NeoForge 26.2.x. They may exist and simply be
+  unused. Prefer `getPortalCooldown() > 0` or `canUsePortal(boolean)`, both of which
+  are attested.
+- **The package of the `Portal` interface** and of the portal processor type. The
+  interface must exist — it types `setAsInsidePortal`'s first argument — but no 26.2
+  source here names it.
+- **Whether a five-argument `entityInside` overload still exists** alongside the
+  six-argument one. Neither Paper nor NeoForge patches `BlockBehaviour.entityInside`,
+  so neither says. Every vanilla 26.2 override found uses six.
+
+There is also no custom-portal mod on 26.2 to copy from: `customportalapi` stops at
+1.21, and the one Immersive Portals fork on 26.2 teleports through its own entity
+and its `changeDimension` mixin is not registered in any of its mixin configs, so it
+never applies. Vanilla is the reference.

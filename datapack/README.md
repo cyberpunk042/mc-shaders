@@ -73,5 +73,6 @@ Nothing reaches this dimension yet — but the API surface a portal needs is now
 established rather than guessed. The teleport call and the opening scan are in
 [../docs/PORTALS-26.2.md](../docs/PORTALS-26.2.md); registering the frame block and
 catching the right-click that lights it are in
-[../docs/BLOCKS-26.2.md](../docs/BLOCKS-26.2.md). What is left is writing it, and
-reading one last thing: what a portal block does when an entity stands in it.
+[../docs/BLOCKS-26.2.md](../docs/BLOCKS-26.2.md), and what a portal block does when
+an entity stands in it is in PORTALS-26.2.md too — it turns out not to teleport at
+all. What is left is writing it.
