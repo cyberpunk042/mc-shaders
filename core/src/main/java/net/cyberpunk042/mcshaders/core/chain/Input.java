@@ -10,9 +10,13 @@ import net.cyberpunk042.mcshaders.core.api.Stable;
  * @param target         the target it is read from
  * @param useDepthBuffer whether to bind the target's depth attachment rather than its
  *                       colour
+ * @param bilinear       whether to sample it with linear filtering rather than nearest.
+ *                       Vanilla's own blur passes use this to read a half-resolution
+ *                       target smoothly; omitting it from the model would silently drop
+ *                       the field when a chain round-trips.
  */
 @Stable(since = "0.4.0")
-public record Input(String samplerName, String target, boolean useDepthBuffer) {
+public record Input(String samplerName, String target, boolean useDepthBuffer, boolean bilinear) {
 
     public Input {
         if (samplerName == null || samplerName.isBlank()) {
@@ -23,8 +27,12 @@ public record Input(String samplerName, String target, boolean useDepthBuffer) {
         }
     }
 
+    public Input(String samplerName, String target, boolean useDepthBuffer) {
+        this(samplerName, target, useDepthBuffer, false);
+    }
+
     public Input(String samplerName, String target) {
-        this(samplerName, target, false);
+        this(samplerName, target, false, false);
     }
 
     /**

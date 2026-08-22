@@ -110,7 +110,8 @@ public final class PostChainCodec {
                 inputs.add(new Input(
                         in.get("sampler_name").getAsString(),
                         in.get("target").getAsString(),
-                        in.has("use_depth_buffer") && in.get("use_depth_buffer").getAsBoolean()));
+                        in.has("use_depth_buffer") && in.get("use_depth_buffer").getAsBoolean(),
+                        in.has("bilinear") && in.get("bilinear").getAsBoolean()));
             }
         }
 

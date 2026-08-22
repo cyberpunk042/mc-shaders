@@ -458,9 +458,27 @@ every one of them, not adjusting a few.
 What crossed instead — geometry, maths, the field model, the parameter model — is
 version-agnostic pure Java, and is unaffected by any of this.
 
-**One caveat on the shader corpus.** The pipeline JSON and GLSL analysed above are
-also 1.21.6-era. The `targets`/`passes`/`uniforms` post-effect format and the
-`InSampler` naming convention are what that version uses; whether 26.2 changed
-either is **not established here** and would need checking before treating the
-checker's model of the format as current. The std140 rules it enforces are a GLSL
-and OpenGL matter and do not depend on the Minecraft version.
+**The shader corpus is 1.21.6-era too, and that turns out not to matter.** The
+caveat originally recorded here — that the post-effect format might have changed
+by 26.x — was checked rather than left open. Vanilla's own `post_effect/blur.json`
+and `entity_outline.json` at **26.1.2** use exactly the same shape:
+
+| | 1.21.6 corpus | vanilla 26.1.2 |
+|---|---|---|
+| top level | `targets`, `passes` | same |
+| target entry | `{}` | same |
+| pass | `vertex_shader`, `fragment_shader`, `inputs`, `output`, `uniforms` | same |
+| input | `sampler_name`, `target`, `use_depth_buffer` | plus `bilinear` |
+| uniform entry | `name`, `type`, `value` | same |
+
+So the format did not change, the corpus is portable in that respect, and the
+checker's model is current for 26.x.
+
+The comparison also found the one field the model was missing. Vanilla's blur
+passes set `bilinear` on an input to sample a half-resolution target smoothly;
+the mod's corpus never uses it, so reading only that corpus would never have
+surfaced it, and a chain read and written back would have silently lost the
+field. `Input` now carries it.
+
+The std140 rules the checker enforces are a GLSL and OpenGL matter and never
+depended on the Minecraft version.

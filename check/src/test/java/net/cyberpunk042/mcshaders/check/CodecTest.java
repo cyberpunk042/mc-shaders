@@ -126,6 +126,25 @@ class CodecTest {
         }
 
         @Test
+        @DisplayName("bilinear is read, and defaults to false")
+        void bilinearIsRead() throws IOException {
+            // Vanilla's own blur passes set this. Not modelling it would silently drop
+            // the field whenever a chain is read and written back.
+            PostChain chain = read("""
+                    { "targets": {}, "passes": [{
+                      "vertex_shader": "v", "fragment_shader": "f", "output": "minecraft:main",
+                      "inputs": [
+                        { "sampler_name": "In",   "target": "minecraft:main" },
+                        { "sampler_name": "Blur", "target": "minecraft:main", "bilinear": true }
+                      ]
+                    }] }
+                    """);
+
+            assertFalse(chain.passes().get(0).inputs().get(0).bilinear());
+            assertTrue(chain.passes().get(0).inputs().get(1).bilinear());
+        }
+
+        @Test
         @DisplayName("the sampler the shader must declare is the input name plus Sampler")
         void samplerNamingConvention() throws IOException {
             assertEquals("InSampler", read(MINIMAL).passes().get(0).inputs().get(0).declaredSampler());
