@@ -224,7 +224,7 @@ compared*, below, for what that does and does not cause at runtime. The errors:
 | `FieldVisualConfig` | diverges at byte 264, in all 25 field-visual passes | shader has `GeoWaveResolution`, host writes `GeoSmoothRadius`; the two lists never realign, so roughly two-thirds of the block is read from the wrong place |
 | `MagicCircleConfig` | diverges at byte 56 | shader has `BreathTime`, host writes `UpZ` |
 | `ShockwaveConfig` | truncated at byte 144 | shader reads `ShapeType` onward; the host stops before it |
-| `VirusBlockParams` | truncated at byte 288 | `BlockPos` is `vec4[32]`; only element 0 is ever written |
+| ~~`VirusBlockParams`~~ | — | **retracted.** Reported as truncated at byte 288 on the strength of a scratch script that ignored the JSON's `count` field. The pipeline declares `BlockPos` with `count: 32`, matching the GLSL's `vec4 BlockPos[32]` exactly. `virus_block` is sound. |
 
 ### Which pair of declarations was compared
 
@@ -289,7 +289,7 @@ is not usually what is wrong.
 
 ### The corpus, end to end
 
-21 pipelines. One — `shockwave_glow` — is sound. The rest:
+21 pipelines. Two — `shockwave_glow` and `virus_block` — are sound. The rest:
 
 | Pipelines | Error |
 |---|---|
@@ -297,7 +297,7 @@ is not usually what is wrong.
 | 16 `field_visual_*` | `FieldVisualConfig` diverges at byte 264 |
 | `magic_circle` | `MagicCircleConfig` diverges at byte 56 |
 | `shockwave_ring` | `ShockwaveConfig` truncated at byte 144 — 40 members unwritten |
-| `virus_block` | `VirusBlockParams` truncated at byte 288 — 31 unwritten |
+| ~~`virus_block`~~ | retracted — sound. See the note in the findings table above. |
 
 The four `depth_*` are worth separating, and then separating again once you read
 what they are. `DepthTestShader` is reachable — keybind, a GUI node, two mixins —
@@ -353,3 +353,16 @@ The checker also has to distinguish *missing* from *elsewhere*. A chain naming
 mod's asset tree; `ResourceTree.isExternal` reports that a namespace is absent
 entirely, and findings about those ids are dropped. Without it every chain in the
 corpus reports two missing shaders, which is exactly how a checker gets ignored.
+
+
+## A note on the scratch scripts
+
+The findings in this document were first produced by throwaway Python, then
+re-derived through `check/` once it existed. That was worth doing: one finding
+did not survive.
+
+`virus_block` was reported as writing one element of a thirty-two element array.
+The scratch script ignored the JSON's `count` field; the pipeline declares
+`BlockPos` with `count: 32` and matches the shader exactly. The library was
+right and the script was wrong — which is the argument for the library, and the
+reason a finding from a scratch tool is a hypothesis until the real one agrees.

@@ -84,6 +84,17 @@ class ShaderCheckTest {
         }
 
         @Test
+        @DisplayName("shader files are listed per file, while chains name a stem")
+        void shaderFilesAreListedPerFile(@TempDir Path root) throws IOException {
+            // A chain names one id for a pair of files; this set is about files that
+            // exist, so each is named exactly once, extension included.
+            List<String> files = new ResourceTree(soundTree(root)).shaderFiles();
+
+            assertTrue(files.contains("example:post/tint.fsh"), files.toString());
+            assertTrue(files.contains("example:post/blit.vsh"), files.toString());
+        }
+
+        @Test
         void listsTheChainsItFinds(@TempDir Path root) throws IOException {
             List<Path> chains = new ResourceTree(soundTree(root)).chains();
 
@@ -134,6 +145,18 @@ class ShaderCheckTest {
             write(root.resolve("example/post_effect/broken.json"), "{ not json");
 
             assertEquals(1, new ShaderCheck(new ResourceTree(root), true).run());
+        }
+
+        @Test
+        @DisplayName("a shader nothing reaches is reported but does not fail")
+        void orphansAreReportedNotFailed(@TempDir Path root) throws IOException {
+            // A pack may load shaders by means this does not model, and a variant kept
+            // on purpose is not a defect. Failing on these would make the check
+            // unusable on any real tree.
+            soundTree(root);
+            write(root.resolve("example/shaders/post/_archive/old.fsh"), SHADER);
+
+            assertEquals(0, new ShaderCheck(new ResourceTree(root), false).run());
         }
 
         @Test

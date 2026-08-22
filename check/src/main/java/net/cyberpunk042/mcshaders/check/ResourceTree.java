@@ -75,6 +75,34 @@ public final class ResourceTree implements SourceProvider {
         return !namespaces().contains(namespace);
     }
 
+    /**
+     * Every shader file in the tree, as namespaced ids, sorted.
+     *
+     * <p>Ids carry their extension here — unlike the ones a chain uses, which name
+     * a pair of files by a single stem. This set is about the files that exist, so
+     * each is named exactly once.
+     */
+    public List<String> shaderFiles() {
+        List<String> out = new ArrayList<>();
+        for (String namespace : namespaces()) {
+            Path dir = assets.resolve(namespace).resolve("shaders");
+            if (!Files.isDirectory(dir)) {
+                continue;
+            }
+            try (Stream<Path> files = Files.walk(dir)) {
+                files.filter(Files::isRegularFile)
+                        .filter(f -> SHADER_EXTENSIONS.stream()
+                                .anyMatch(e -> !e.isEmpty() && f.getFileName().toString().endsWith(e)))
+                        .map(f -> namespace + ":" + dir.relativize(f).toString().replace('\\', '/'))
+                        .forEach(out::add);
+            } catch (IOException e) {
+                throw new UncheckedIOException("cannot walk " + dir, e);
+            }
+        }
+        out.sort(String::compareTo);
+        return out;
+    }
+
     /** Every {@code post_effect/*.json} in the tree, sorted. */
     public List<Path> chains() {
         List<Path> out = new ArrayList<>();
