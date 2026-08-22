@@ -72,7 +72,7 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Key | Value | Status | Source |
 |---|---|---|---|
-| `fabric_loom_version` | `1.17` | **Pending CI** | Fabric's **26.2** announcement names Loom 1.17. Was `1.15.5`, taken from the 26.1 announcement — it resolved, but see *26.1-era tooling* below. |
+| `fabric_loom_version` | `1.16-SNAPSHOT` | **Pending CI** | `1.17` was tried first and **does not exist under this plugin id** — see below. `1.16-SNAPSHOT` is what a shipping 26.2 mod uses. Pin concretely once CI reports the resolved version, as was done for `1.15.5`. |
 | `moddevgradle_version` | `2.0.141` | **Verified in CI** | Gradle Plugin Portal listing for `net.neoforged.moddev` |
 | `gradle_version` | `9.5.1` | **Verified** | Fabric's 26.2 announcement names Gradle 9.5.1. Bumped from `9.4.0`; the wrapper downloaded it and the core build passes on it locally. |
 | `java_version` | `25` | **Verified in CI** | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
@@ -96,12 +96,23 @@ targets 26.2 on Fabric, and its `gradle.properties` reads:
 | `loom_version` | `1.16-SNAPSHOT` | `1.17` | see below |
 | Loom plugin id | `net.fabricmc.fabric-loom` | same | confirms the new plugin id, not the legacy one |
 
-**On Loom, the two sources disagree.** Fabric's 26.2 announcement names 1.17; a
-mod shipping against 26.2 is on `1.16-SNAPSHOT`. Both are above the `1.15.5` this
-build was using, so the bump is right either way. `1.17` is pinned here because
-the vendor's own guidance for this Minecraft version is the stronger source, and
-because a floating `-SNAPSHOT` is not a pin. If it fails to resolve, `1.16` is the
-evidenced fallback rather than a guess.
+**On Loom, the two sources disagreed, and the mod was right.** Fabric's 26.2
+announcement names 1.17; Jade is on `1.16-SNAPSHOT`. 1.17 was tried first, on the
+reasoning that vendor guidance for this Minecraft version is the stronger source.
+CI rejected it:
+
+```
+Plugin [id: 'net.fabricmc.fabric-loom', version: '1.17'] was not found
+  could not resolve plugin artifact
+  net.fabricmc.fabric-loom:net.fabricmc.fabric-loom.gradle.plugin:1.17
+```
+
+So 1.17 exists as a Loom release but not under **this** plugin id — the newer,
+non-remapping one that 26.x requires. The announcement and the plugin coordinate
+are not the same fact, and only the mod that builds could tell them apart.
+
+`-SNAPSHOT` is not a pin, and is here only until CI reports what it resolves to;
+the same two-step produced the concrete `1.15.5` this build used before.
 
 ## 26.1-era tooling under a 26.2 target
 
