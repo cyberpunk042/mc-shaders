@@ -125,7 +125,19 @@ So the readily-available documentation for this is doubly wrong for this project
 wrong version, wrong mapping. Copying a signature out of it would compile against
 nothing and waste a CI round-trip apiece. Establishing the real entry points needs
 the 26.2 sources open — which the build environment cannot reach — or a Fabric mod
-doing post-processing on 26.2 to read, which the search did not surface.
+doing post-processing on 26.2 to read.
+
+**A Fabric mod on 26.2 was found and read**, which was worth doing even though it
+does no post-processing. [`Snownee/Jade`](https://github.com/Snownee/Jade/tree/26.2-fabric)
+mixins into `BossHealthOverlay`, `CreativeModeInventoryScreen`, `GuiGraphics`,
+`GuiGraphicsExtractor`, `FogRenderer` and `PreparedTextBuilder` — all in Mojang
+naming, and two corroborate the primer directly: `PreparedTextBuilder` matches the
+claim that `Font#drawInBatch` gave way to `prepareText` → `PreparedText`, and
+`GuiGraphicsExtractor` appears exactly where the primer says it does.
+
+So the GUI surface an editing screen would need is readable after all, from a mod
+that compiles against it. What is still missing is a 26.2 mod doing
+*post-processing* — Jade does not, so the chain hook points remain unestablished.
 
 That is where M2 starts, and it starts with reading rather than typing.
 
