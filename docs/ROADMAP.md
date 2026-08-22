@@ -208,6 +208,10 @@ Make it authorable without Java.
   It lives in `common` rather than `core` for the same reason the shader checker's
   codec does: the engine models bindings, it does not parse them, so the published
   library carries no JSON dependency. 22 tests, and `common` had none before this
+- The 26.2 reload API is confirmed — see [DATAPACKS-26.2.md](DATAPACKS-26.2.md).
+  It also settles which listener to use: `SimpleJsonResourceReloadListener` is
+  generic over a DFU codec on 26.2, which does not compose with our gson codec, so
+  M3 uses the plain `ResourceManagerReloadListener` and feeds `BindingLoader`
 - Datapack loading from `data/<ns>/mcshaders/bindings/*.json` — **half done**:
   `BindingLoader` turns a set of files into a registry, skipping the broken ones
   rather than blanking every dimension over one typo, and reporting what it
