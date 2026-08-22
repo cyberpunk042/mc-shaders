@@ -208,6 +208,22 @@ class LayoutTest {
         }
 
         @Test
+        @DisplayName("an extra member landing in padding is not a divergence")
+        void writingIntoPaddingIsNotDrift() {
+            // std140 pads a float before a vec4, so an inserted float can occupy space
+            // the shader never reads while leaving every later offset exactly where it
+            // was. Comparing by position calls that drift; comparing by offset does not.
+            UniformBlock shader = block("C", "Radius", GlslType.FLOAT, "Tint", GlslType.VEC4);
+            UniformBlock host = block("C", "Radius", GlslType.FLOAT, "Inserted", GlslType.FLOAT,
+                    "Tint", GlslType.VEC4);
+
+            assertTrue(LayoutComparison.errors(shader, host).isEmpty(),
+                    () -> LayoutComparison.compare(shader, host).toString());
+            assertEquals(LayoutMismatch.Kind.IGNORED,
+                    LayoutComparison.compare(shader, host).get(0).kind());
+        }
+
+        @Test
         @DisplayName("only the first divergence is reported, not every member after it")
         void divergenceIsReportedOnce() {
             UniformBlock shader = block("C", "a", GlslType.FLOAT, "b", GlslType.FLOAT,
@@ -226,9 +242,9 @@ class LayoutTest {
 
             List<LayoutMismatch> problems = LayoutComparison.compare(shader, host);
 
-            assertEquals(LayoutMismatch.Kind.TRUNCATED, problems.get(0).kind());
+            assertEquals(LayoutMismatch.Kind.UNWRITTEN, problems.get(0).kind());
             assertEquals(4, problems.get(0).offset());
-            assertTrue(problems.get(0).detail().contains("more member"), problems.get(0).detail());
+            assertTrue(problems.get(0).isError(), "the shader reads a value nobody wrote");
         }
 
         @Test
@@ -238,8 +254,9 @@ class LayoutTest {
 
             List<LayoutMismatch> problems = LayoutComparison.compare(shader, host);
 
-            assertEquals(LayoutMismatch.Kind.TRUNCATED, problems.get(0).kind());
-            assertTrue(problems.get(0).detail().contains("past the end"), problems.get(0).detail());
+            assertEquals(LayoutMismatch.Kind.IGNORED, problems.get(0).kind());
+            assertEquals(LayoutMismatch.Severity.INFO, problems.get(0).severity(),
+                    "writing where the shader reads nothing is harmless");
         }
 
         @Test
@@ -329,9 +346,11 @@ class LayoutTest {
 
             List<LayoutMismatch> problems = LayoutComparison.compare(shader, host);
 
-            assertEquals(LayoutMismatch.Kind.TRUNCATED, problems.get(0).kind());
+            assertEquals(LayoutMismatch.Kind.UNWRITTEN, problems.get(0).kind());
             assertTrue(problems.get(0).isError());
-            assertTrue(problems.get(0).detail().contains("31 more"), problems.get(0).detail());
+            assertEquals(1, problems.size(),
+                    "a host that stops early is one event, however many members follow");
+            assertTrue(problems.get(0).detail().contains("31 member"), problems.get(0).detail());
         }
 
         @Test
@@ -342,9 +361,9 @@ class LayoutTest {
             assertEquals(LayoutMismatch.Severity.ERROR,
                     LayoutComparison.compare(two, one).get(0).severity(),
                     "the shader reads a member nobody wrote");
-            assertEquals(LayoutMismatch.Severity.WARNING,
+            assertEquals(LayoutMismatch.Severity.INFO,
                     LayoutComparison.compare(one, two).get(0).severity(),
-                    "the host writes a member nobody reads");
+                    "the host writes a member nobody reads, which is harmless");
         }
     }
 }

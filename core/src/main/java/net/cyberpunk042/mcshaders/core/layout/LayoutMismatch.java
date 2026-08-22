@@ -33,6 +33,10 @@ public record LayoutMismatch(Kind kind, Severity severity, int offset,
     public enum Kind {
         /** Different members occupy the same offset. Everything after this is suspect. */
         DIVERGENT_MEMBER,
+        /** The shader reads at an offset the host writes nothing to. */
+        UNWRITTEN,
+        /** The host writes at an offset the shader reads nothing from — padding, usually. */
+        IGNORED,
         /** Same offset and type, different name, and the rest still lines up. */
         RENAMED_MEMBER,
         /** The host fills a slot the shader has marked as reserved or padding. */

@@ -3,6 +3,9 @@ package net.cyberpunk042.mcshaders.core;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import net.cyberpunk042.mcshaders.core.backend.BackendCapabilities;
 import net.cyberpunk042.mcshaders.core.backend.BackendFactory;
@@ -17,7 +20,25 @@ import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectKind;
 import net.cyberpunk042.mcshaders.core.effect.EffectLayer;
 import net.cyberpunk042.mcshaders.core.effect.EffectStack;
+import net.cyberpunk042.mcshaders.core.chain.ChainProblem;
+import net.cyberpunk042.mcshaders.core.chain.ChainValidator;
+import net.cyberpunk042.mcshaders.core.chain.Input;
+import net.cyberpunk042.mcshaders.core.chain.Pass;
+import net.cyberpunk042.mcshaders.core.chain.PostChain;
+import net.cyberpunk042.mcshaders.core.glsl.IncludeResolver;
+import net.cyberpunk042.mcshaders.core.glsl.ResolvedShader;
+import net.cyberpunk042.mcshaders.core.glsl.SourceProvider;
+import net.cyberpunk042.mcshaders.core.layout.GlslBlocks;
+import net.cyberpunk042.mcshaders.core.layout.GlslType;
+import net.cyberpunk042.mcshaders.core.layout.LayoutComparison;
+import net.cyberpunk042.mcshaders.core.layout.LayoutMismatch;
+import net.cyberpunk042.mcshaders.core.layout.Std140;
+import net.cyberpunk042.mcshaders.core.layout.UniformBlock;
 import net.cyberpunk042.mcshaders.core.param.EffectParams;
+import net.cyberpunk042.mcshaders.core.param.ParamValue;
+import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
+import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
+import net.cyberpunk042.mcshaders.core.schema.SchemaAudit;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -152,5 +173,134 @@ class LibraryDocExampleTest {
         pipeline.frame(state, 1.0, new EffectBackend.FrameContext(1920, 1080, 0f, 0.0));
 
         assertEquals(1, backend.frameCount());
+    }
+
+
+    // ── docs: Working with GLSL source ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("the include example resolves, and a missing include is a diagnostic not a throw")
+    void includeExample() {
+        Map<String, String> sources = Map.of(
+                "post/tint.fsh", "#version 150\n#include \"lib/util.glsl\"\nvoid main() {}\n",
+                "post/lib/util.glsl", "float half_of(float x) { return x * 0.5; }\n");
+        SourceProvider files = path -> Optional.ofNullable(sources.get(path));
+
+        ResolvedShader resolved = new IncludeResolver(files).resolve("post/tint.fsh");
+
+        assertTrue(!resolved.hasErrors(), () -> resolved.errors().toString());
+        assertTrue(resolved.source().contains("half_of"), "the include should be inlined");
+        assertTrue(resolved.source().contains("#line"), "positions must map back to the original file");
+
+        ResolvedShader broken = new IncludeResolver(
+                path -> path.equals("post/tint.fsh") ? Optional.of("#include \"gone.glsl\"\n") : Optional.empty())
+                .resolve("post/tint.fsh");
+
+        assertTrue(broken.hasErrors(), "a missing include is reported, not thrown");
+    }
+
+    // ── docs: Checking a uniform block against its shader ───────────────────────
+
+    @Test
+    @DisplayName("the layout example reports the byte where the two declarations part company")
+    void layoutExample() {
+        String glsl = "layout(std140) uniform Config { float Radius; vec4 Tint; };";
+        UniformBlock inShader = GlslBlocks.blocks(glsl).get("Config");
+
+        UniformBlock fromHost = new UniformBlock("Config", List.of(
+                new Std140.Member("Radius", GlslType.FLOAT),
+                new Std140.Member("Tint", GlslType.VEC4)));
+
+        assertTrue(LayoutComparison.errors(inShader, fromHost).isEmpty(),
+                () -> LayoutComparison.compare(inShader, fromHost).toString());
+
+        // An extra member that lands in padding the shader does not read is not a
+        // divergence: Tint is still at 16 on both sides, so the shader reads correctly.
+        UniformBlock intoPadding = new UniformBlock("Config", List.of(
+                new Std140.Member("Radius", GlslType.FLOAT),
+                new Std140.Member("Inserted", GlslType.FLOAT),
+                new Std140.Member("Tint", GlslType.VEC4)));
+
+        assertTrue(LayoutComparison.errors(inShader, intoPadding).isEmpty(),
+                () -> LayoutComparison.compare(inShader, intoPadding).toString());
+
+        // An extra member that actually shifts a later one is.
+        UniformBlock shifted = new UniformBlock("Config", List.of(
+                new Std140.Member("Inserted", GlslType.VEC4),
+                new Std140.Member("Radius", GlslType.FLOAT),
+                new Std140.Member("Tint", GlslType.VEC4)));
+        List<LayoutMismatch> errors = LayoutComparison.errors(inShader, shifted);
+
+        assertEquals(1, errors.size(), errors::toString);
+        assertEquals(0, errors.get(0).offset(), "everything from byte 0 on is misread");
+    }
+
+    @Test
+    @DisplayName("as the docs claim, a mat4 written as four vec4s is not reported")
+    void layoutExampleIgnoresSpellingDifferences() {
+        UniformBlock inShader = new UniformBlock("Camera", List.of(
+                new Std140.Member("ViewProj", GlslType.MAT4)));
+        UniformBlock fromHost = new UniformBlock("Camera", List.of(
+                new Std140.Member("Row0", GlslType.VEC4), new Std140.Member("Row1", GlslType.VEC4),
+                new Std140.Member("Row2", GlslType.VEC4), new Std140.Member("Row3", GlslType.VEC4)));
+
+        assertTrue(LayoutComparison.agree(inShader, fromHost));
+    }
+
+    // ── docs: Validating a post-processing chain ────────────────────────────────
+
+    @Test
+    @DisplayName("the chain example catches a target read before anything wrote it")
+    void chainExample() {
+        String shader = "#version 150\nuniform sampler2D InSampler;\nvoid main() {}\n";
+        SourceProvider files = path -> Optional.of(shader);
+        PostChain chain = new PostChain(
+                Map.of("swap", net.cyberpunk042.mcshaders.core.chain.TargetSpec.SCREEN_SIZED),
+                List.of(new Pass("post/blit", "post/tint",
+                        List.of(new Input("In", "swap")), "minecraft:main", List.of())));
+
+        ChainValidator validator = new ChainValidator(files, Set.of("minecraft:main"));
+        List<ChainProblem> problems = validator.validate(chain);
+
+        assertTrue(problems.stream().anyMatch(p -> p.kind() == ChainProblem.Kind.READ_BEFORE_WRITE),
+                problems::toString);
+    }
+
+    // ── docs: Describing what is tunable ────────────────────────────────────────
+
+    @Test
+    @DisplayName("the schema example builds, defaults, and coerces as the prose says")
+    void schemaExample() {
+        EffectSchema schema = EffectSchema.builder("Energy Orb", "energy_orb", 1)
+                .group("Core",
+                        ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"),
+                        ParamSpec.toggle("core.glow", "Glow", true, "Core"))
+                .group("Look",
+                        ParamSpec.color("look.tint", "Tint", ParamValue.Rgba.opaque(1, 1, 1), "Look"))
+                .build();
+
+        EffectParams defaults = schema.defaults();
+        assertEquals(0.15, defaults.scalarOr("core.size", -1), 1e-9);
+
+        EffectParams edited = defaults
+                .with("core.size", new ParamValue.Scalar(99))
+                .with("unknown.key", new ParamValue.Scalar(7));
+        EffectParams safe = schema.coerce(edited);
+
+        assertEquals(1.0, safe.scalarOr("core.size", -1), 1e-9, "clamped");
+        assertEquals(7.0, safe.scalarOr("unknown.key", -1), 1e-9, "unknown keys are left alone");
+    }
+
+    @Test
+    @DisplayName("the audit example reports a default the effect's own editor would refuse")
+    void schemaAuditExample() {
+        EffectSchema schema = EffectSchema.builder("Orb", "energy_orb", 1)
+                .group("Core", ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"))
+                .build();
+        EffectParams shipped = EffectParams.builder().scalar("core.size", 5).build();
+
+        assertTrue(SchemaAudit.audit(schema, shipped).stream()
+                .anyMatch(p -> p.kind() == net.cyberpunk042.mcshaders.core.schema.SchemaProblem.Kind
+                        .DEFAULT_OUT_OF_RANGE));
     }
 }

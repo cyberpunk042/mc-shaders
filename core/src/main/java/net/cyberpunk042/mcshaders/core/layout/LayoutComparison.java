@@ -1,8 +1,12 @@
 package net.cyberpunk042.mcshaders.core.layout;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.TreeSet;
+import java.util.stream.Stream;
 import net.cyberpunk042.mcshaders.core.api.Stable;
 
 /**
@@ -54,68 +58,67 @@ public final class LayoutComparison {
      *         same bytes in the same way
      */
     public static List<LayoutMismatch> compare(UniformBlock expected, UniformBlock actual) {
-        List<Std140.Placement> want = Std140.place(Std140.expand(expected.members()));
-        List<Std140.Placement> have = Std140.place(Std140.expand(actual.members()));
+        Map<Integer, Std140.Placement> want = byOffset(expected);
+        Map<Integer, Std140.Placement> have = byOffset(actual);
         List<LayoutMismatch> out = new ArrayList<>();
 
-        int common = Math.min(want.size(), have.size());
-        boolean diverged = false;
-        for (int i = 0; i < common && !diverged; i++) {
-            Std140.Placement w = want.get(i);
-            Std140.Placement h = have.get(i);
+        List<Integer> offsets = new ArrayList<>(new TreeSet<>(
+                Stream.concat(want.keySet().stream(), have.keySet().stream()).toList()));
 
-            if (w.offset() != h.offset() || w.type() != h.type()) {
-                out.add(mismatch(w.offset() != h.offset()
-                                ? LayoutMismatch.Kind.DIVERGENT_MEMBER
-                                : LayoutMismatch.Kind.TYPE_MISMATCH,
-                        LayoutMismatch.Severity.ERROR, w, h,
-                        w.offset() != h.offset()
-                                ? "the declarations part company here, so this member and every one"
-                                        + " after it is read from the wrong place"
-                                : "same member at the same offset, declared with different types"));
-                diverged = w.offset() != h.offset();
+        for (int offset : offsets) {
+            Std140.Placement w = want.get(offset);
+            Std140.Placement h = have.get(offset);
+
+            if (h == null) {
+                // A host that simply stops early leaves every later member unwritten.
+                // That is one event, and naming forty of them buries it.
+                long remaining = offsets.stream().filter(o -> o >= offset).count();
+                long unwritten = offsets.stream().filter(o -> o >= offset && !have.containsKey(o)).count();
+                boolean toTheEnd = remaining == unwritten;
+                out.add(new LayoutMismatch(LayoutMismatch.Kind.UNWRITTEN, LayoutMismatch.Severity.ERROR,
+                        offset, describe(w), null,
+                        toTheEnd && unwritten > 1
+                                ? "the shader reads " + unwritten + " member(s) from here on and nothing"
+                                        + " writes them, starting with '" + w.name() + "'; they hold"
+                                        + " whatever the buffer happened to contain"
+                                : "the shader reads '" + w.name() + "' here and nothing writes it; it"
+                                        + " holds whatever the buffer happened to contain"));
+                if (toTheEnd) {
+                    break;
+                }
                 continue;
             }
-
+            if (w == null) {
+                out.add(new LayoutMismatch(LayoutMismatch.Kind.IGNORED, LayoutMismatch.Severity.INFO,
+                        offset, null, describe(h),
+                        "the host writes '" + h.name() + "' here and the shader reads nothing from it"));
+                continue;
+            }
+            // Names first. Two differently-named members at one offset is the
+            // declarations parting company; the same member declared with two types is
+            // a local error that says nothing about what follows.
             if (namesAgree(w, h)) {
+                if (w.type() != h.type()) {
+                    out.add(mismatch(LayoutMismatch.Kind.TYPE_MISMATCH, LayoutMismatch.Severity.ERROR,
+                            w, h, "same member at the same offset, declared with different types"));
+                }
                 continue;
             }
-
             if (isReserved(w.name())) {
-                out.add(mismatch(LayoutMismatch.Kind.RESERVED_SLOT_WRITTEN,
-                        LayoutMismatch.Severity.INFO, w, h,
-                        "the host writes here but the shader has reserved the slot, so the value"
+                out.add(mismatch(LayoutMismatch.Kind.RESERVED_SLOT_WRITTEN, LayoutMismatch.Severity.INFO,
+                        w, h, "the host writes here but the shader has reserved the slot, so the value"
                                 + " is ignored"));
-            } else if (tailMatches(want, have, i + 1)) {
-                out.add(mismatch(LayoutMismatch.Kind.RENAMED_MEMBER,
-                        LayoutMismatch.Severity.WARNING, w, h,
+            } else if (tailAgrees(want, have, offsets, offset)) {
+                out.add(mismatch(LayoutMismatch.Kind.RENAMED_MEMBER, LayoutMismatch.Severity.WARNING, w, h,
                         "same offset and type under a different name, and the rest still lines up —"
                                 + " a rename on one side only"));
             } else {
-                out.add(mismatch(LayoutMismatch.Kind.DIVERGENT_MEMBER,
-                        LayoutMismatch.Severity.ERROR, w, h,
+                out.add(mismatch(LayoutMismatch.Kind.DIVERGENT_MEMBER, LayoutMismatch.Severity.ERROR, w, h,
                         "the declarations part company here, so this member and every one after it"
                                 + " is read from the wrong place"));
-                diverged = true;
+                // Every later offset is a consequence of this one; listing them is noise.
+                break;
             }
-        }
-
-        // Once the two have parted company, listing every later member as its own
-        // mismatch is noise: they are all consequences of the one divergence.
-        if (!diverged && want.size() != have.size()) {
-            boolean shortfall = have.size() < want.size();
-            Std140.Placement first = (shortfall ? want : have).get(common);
-            out.add(new LayoutMismatch(LayoutMismatch.Kind.TRUNCATED,
-                    shortfall ? LayoutMismatch.Severity.ERROR : LayoutMismatch.Severity.WARNING,
-                    first.offset(),
-                    shortfall ? describe(first) : null,
-                    shortfall ? null : describe(first),
-                    shortfall
-                            ? "the shader reads " + (want.size() - common) + " more member(s) than are"
-                                    + " written, starting here; they hold whatever the buffer happened"
-                                    + " to contain"
-                            : (have.size() - common) + " member(s) are written past the end of what the"
-                                    + " shader declares, starting here"));
         }
 
         if (out.isEmpty() && expected.sizeInBytes() != actual.sizeInBytes()) {
@@ -125,6 +128,14 @@ public final class LayoutComparison {
                     "every member agrees but the blocks are different sizes"));
         }
         return List.copyOf(out);
+    }
+
+    private static Map<Integer, Std140.Placement> byOffset(UniformBlock block) {
+        Map<Integer, Std140.Placement> out = new LinkedHashMap<>();
+        for (Std140.Placement p : Std140.place(Std140.expand(block.members()))) {
+            out.put(p.offset(), p);
+        }
+        return out;
     }
 
     /** Whether the two declarations describe the same bytes, ignoring INFO notes. */
@@ -160,15 +171,17 @@ public final class LayoutComparison {
                 || lower.startsWith("unused") || lower.startsWith("_pad");
     }
 
-    /** Whether the two lists are identical from {@code from} onwards. */
-    private static boolean tailMatches(List<Std140.Placement> want, List<Std140.Placement> have, int from) {
-        if (want.size() != have.size()) {
-            return false;
-        }
-        for (int i = from; i < want.size(); i++) {
-            Std140.Placement w = want.get(i);
-            Std140.Placement h = have.get(i);
-            if (w.offset() != h.offset() || w.type() != h.type() || !namesAgree(w, h)) {
+    /** Whether every offset after {@code from} holds the same thing on both sides. */
+    private static boolean tailAgrees(Map<Integer, Std140.Placement> want,
+                                      Map<Integer, Std140.Placement> have,
+                                      List<Integer> offsets, int from) {
+        for (int offset : offsets) {
+            if (offset <= from) {
+                continue;
+            }
+            Std140.Placement w = want.get(offset);
+            Std140.Placement h = have.get(offset);
+            if (w == null || h == null || w.type() != h.type() || !namesAgree(w, h)) {
                 return false;
             }
         }
