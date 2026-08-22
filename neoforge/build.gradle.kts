@@ -24,6 +24,14 @@ neoForge {
 }
 
 dependencies {
+    // `implementation` compiles against it; `jarJar` is what actually packages it.
+    // Declaring only the first shipped a jar missing every class in common while
+    // this module's entrypoint imported them. See
+    // gradle/verify-jar-contents.gradle.kts.
     implementation(project(":common"))
+    jarJar(project(":common"))
+
     jarJar("net.cyberpunk042:mcshaders-core:$coreVersion")
 }
+
+apply(from = rootProject.file("gradle/verify-jar-contents.gradle.kts"))
