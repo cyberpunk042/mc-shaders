@@ -175,14 +175,31 @@ Built and verified:
 - The backend seam, with a no-op implementation
 - Public API for third parties: effect types, backend contribution with priority
   selection, and binding registration, all with a defined registration lifecycle
+- GLSL include resolution, with cycle reporting and `#line` source mapping
+- The geometry half: shape maths, the shape model, motion, and the field system
+  (shapes and the links between them) — ported out of `the-virus-block-mc` with
+  characterisation tests it did not have before
+- Static checking that needs no GPU: std140 placement, reading a uniform block
+  back out of GLSL, comparing two declarations byte by byte, and a CLI that exits
+  non-zero so a pack can be gated in CI
+- An editing schema, an edit session with undo, and a tuning store that keeps what
+  was edited
+- The editor itself — schema-driven screens on Fabric, opened by an unbound key
 
-**127 tests, 0 failures.**
+**360 tests in `core` and 35 in `check`, 0 failures** — both verified 2026-08-22.
 
 Not built yet:
 
-- Any rendering backend that draws (M2)
+- Any rendering backend that draws (M2). The fog entry point is now established
+  from a mod that compiles on 26.2; the post-effect chain is not — see
+  [docs/RENDERING-26.2.md](docs/RENDERING-26.2.md)
 - Datapack loading — bindings are programmatic for now (M3)
 - The demo dimensions (M4)
+
+Two honest caveats about the editor. It compiles against the real 26.2 API in CI,
+which proves its calls exist — not that the screens look right; that needs someone
+to open them. And the mod registers no effects of its own yet, so on a fresh
+install it correctly opens a screen saying there is nothing to edit.
 
 The whole build is green in CI: `./gradlew build` on JDK 25 produces Fabric and
 NeoForge jars against Minecraft 26.2, which pins every version in

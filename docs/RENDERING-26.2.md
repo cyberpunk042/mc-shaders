@@ -17,6 +17,17 @@ been compiled against the real API in CI.
 
 ## Why this document exists
 
+> **Superseded in part, and left standing because the reasoning still applies to
+> the render path.** When this was written, `common/`, `fabric/` and `neoforge/`
+> held five files with **zero** `net.minecraft` imports between them and no
+> Minecraft API had ever been compiled here. That is no longer true: those three
+> now hold **9 files, 4 of which import `net.minecraft` or `com.mojang`**
+> (`SchemaScreen`, `EffectPickerScreen`, `NothingToEditScreen`, `EditorKey` — the
+> editor), and CI compiles them against the real 26.2 API on every push. The
+> paragraph below is kept in its original tense because it is the argument that
+> produced this document, and because it still holds exactly where nothing has
+> been compiled yet: the post-effect chain.
+
 `common/`, `fabric/` and `neoforge/` contain five files with **zero**
 `net.minecraft` imports between them. No Minecraft API has ever been compiled in
 this repository, so there is no existing usage to pattern-match against, and any
