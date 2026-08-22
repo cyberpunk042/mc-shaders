@@ -323,6 +323,41 @@ worth knowing:
 - **Coercion happens before that test**, so two different sets that clamp to the
   same value are one edit, not two.
 
+## Keeping what was edited
+
+A session is a sitting, not storage. When it goes out of scope so do its values,
+which is fine for a one-shot edit and wrong for anything a person closes and comes
+back to. `TuningStore` is where a finished sitting goes.
+
+```java
+TuningStore tuning = new TuningStore();       // or McShadersAPI.tuning()
+
+EditSession session = tuning.sessionFor(schema);   // starts where the last one ended
+session.set("core.size", new ParamValue.Scalar(0.9));
+tuning.commit(session);                            // filed under the schema's own type
+
+tuning.effective(schema);   // tuned if it has been, otherwise the schema's defaults
+```
+
+`effective` is what a renderer wants: it collapses "never edited" and "edited" into
+one answer, so no caller has to remember that a missing entry means the defaults
+rather than nothing. `get` keeps the two apart for callers that care.
+
+Two deliberate choices:
+
+- **`commit` takes the session, not a type and some values**, so values cannot be
+  filed under a type they do not describe.
+- **Committing values equal to the defaults still leaves an entry.** The store
+  records what the editor last held, not whether it differs. The alternative —
+  dropping the entry when nothing looks changed — silently discards earlier tuning
+  the moment someone opens the editor and closes it without touching anything.
+  `clear` is how an entry goes away, and it says so where it is called.
+
+Unlike the registries beside it, a tuning store is never frozen: registries
+accumulate during initialisation and then stop, whereas tuning is the thing that
+changes while the game runs. It is concurrent, and the values in it are immutable,
+so the render path can read it at any time.
+
 ## Turning a shape into geometry
 
 Everything above describes effects. The other half of the library is geometry: the

@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.InputConstants;
 import java.util.List;
 import net.cyberpunk042.mcshaders.McShaders;
 import net.cyberpunk042.mcshaders.McShadersAPI;
-import net.cyberpunk042.mcshaders.core.edit.EditSession;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
@@ -22,7 +21,9 @@ import net.minecraft.resources.Identifier;
  * unbound mapping still appears in the controls list to be given one.
  *
  * <p>What it opens comes from {@link McShadersAPI#schemas()} — the effects that
- * declared themselves editable. One of them opens straight into its editor; several
+ * declared themselves editable, started from {@link McShadersAPI#tuning()} so that a
+ * second press shows what the first visit left rather than the defaults again. One of
+ * them opens straight into its editor; several
  * open a list first; none at all shows a screen saying so, rather than a key that
  * appears to do nothing, which is indistinguishable from a key that is broken.
  */
@@ -89,7 +90,9 @@ public final class EditorKey {
             return new NothingToEditScreen();
         }
         if (schemas.size() == 1) {
-            return new SchemaScreen(null, EditSession.of(schemas.get(0)));
+            EffectSchema only = schemas.get(0);
+            return new SchemaScreen(
+                    null, McShadersAPI.tuning().sessionFor(only), McShadersAPI.tuning());
         }
         return new EffectPickerScreen(schemas);
     }

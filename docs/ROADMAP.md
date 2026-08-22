@@ -124,16 +124,46 @@ the same description drives a screen, a web page or a command line.
 enough to undo it, know what changed. The session performs the edit rather than
 offering a history to push to, so history cannot be forgotten.
 
-**Not done by this:** any actual UI. The model is testable off-Minecraft; a
-screen is not.
+**Not done by this:** any actual UI — see M1.13, which is where that arrived.
 
-**Why not the screen.** `common/`, `fabric/` and `neoforge/` currently contain
-five files with **zero** `net.minecraft` imports between them — no Minecraft API
-has ever been compiled in this repository. A screen would be the first, written
-from memory against a 26.2 API that cannot be read from here, verified only by CI
-round-trips. M2 below already says not to write the render hooks from memory; the
-same applies with more force to a GUI. The seam is ready for whoever has the
-sources open.
+**Why it waited.** At the time, `common/`, `fabric/` and `neoforge/` contained
+five files with **zero** `net.minecraft` imports between them: no Minecraft API
+had ever been compiled in this repository. A screen would have been the first,
+written from memory against a 26.2 API that could not be read from here. What
+unblocked it was not deciding to risk it but finding a mod that ships on 26.2 and
+reading its GUI calls out of the source — see [RENDERING-26.2.md](RENDERING-26.2.md).
+The same condition still holds for the render hooks in M2, which is why they are
+still unwritten.
+
+## M1.13 — The editor ✅ done
+
+The first Minecraft API compiled in this repository, and the screen M1.12 declined
+to write from memory.
+
+- `SchemaScreen` — controls generated from an `EffectSchema`, so adding a parameter
+  to a schema adds its control with no screen code touched
+- `EffectPickerScreen` when several effects are editable, `NothingToEditScreen` when
+  none are. A key that opens nothing is indistinguishable from a key that is broken
+- `EditorKey` — registered unbound, because a mod claiming a key the player did not
+  ask for is a nuisance
+- `SchemaRegistry` + `McShadersAPI.registerSchema` — the link that was missing
+  between an effect existing and an editor being able to reach it
+- `TuningStore` + `McShadersAPI.tuning()` — where the results live once the screen
+  closes
+
+**On the store.** Without it the editor was a screen that looked like an editor:
+every control worked, every value coerced, undo and redo behaved, and pressing
+Escape threw all of it away, because the session was built fresh from the schema's
+defaults on each press and nothing ever read it back. That is the same defect this
+project keeps finding elsewhere — a declaration with nothing verifying it connects
+to a consumer — and it was ours. The store's first consumer is the screen itself on
+reopening, which is what makes the round trip observable rather than aspirational;
+a renderer is the second, and reads `TuningStore.effective`.
+
+**Not done by this:** the screens compile and are wired correctly, which is not the
+same as their looking right. That needs someone to open them. And the mod registers
+no effects of its own yet, so on a fresh install the empty-state screen is the
+correct result rather than a failure.
 
 ## M2 — First rendering backend
 

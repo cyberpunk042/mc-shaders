@@ -17,6 +17,7 @@ import net.cyberpunk042.mcshaders.core.binding.DimensionId;
 import net.cyberpunk042.mcshaders.core.binding.Weather;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
 import net.cyberpunk042.mcshaders.core.edit.EditSession;
+import net.cyberpunk042.mcshaders.core.edit.TuningStore;
 import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectKind;
 import net.cyberpunk042.mcshaders.core.effect.EffectLayer;
@@ -332,6 +333,36 @@ class LibraryDocExampleTest {
         int before = session.historyDepth();
         assertTrue(!session.set("core.size", new ParamValue.Scalar(0.9)));
         assertEquals(before, session.historyDepth());
+    }
+
+    // ── docs: Keeping what was edited ──────────────────────────────────────────
+
+    @Test
+    @DisplayName("the tuning-store example survives the session that produced it")
+    void tuningStoreExample() {
+        EffectSchema schema = EffectSchema.builder("Orb", "energy_orb", 1)
+                .group("Core", ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"))
+                .build();
+
+        TuningStore tuning = new TuningStore();
+
+        EditSession session = tuning.sessionFor(schema);
+        session.set("core.size", new ParamValue.Scalar(0.9));
+        tuning.commit(session);
+
+        assertEquals(0.9, tuning.effective(schema).scalar("core.size").orElseThrow(), 1e-9);
+
+        // The claim the prose makes about a later sitting: it starts where this one
+        // ended, not at the schema's 0.15 default.
+        assertEquals(0.9,
+                tuning.sessionFor(schema).current().scalar("core.size").orElseThrow(), 1e-9);
+
+        // And the claim about an untouched type.
+        EffectSchema untouched = EffectSchema.builder("Halo", "halo", 1)
+                .group("Core", ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"))
+                .build();
+        assertTrue(tuning.get("halo").isEmpty());
+        assertEquals(0.15, tuning.effective(untouched).scalar("core.size").orElseThrow(), 1e-9);
     }
 
     // ── docs: Turning a shape into geometry ────────────────────────────────────
