@@ -45,9 +45,14 @@ import net.cyberpunk042.mcshaders.core.param.EffectParams;
  *
  * <h2>The same thing as a pack file</h2>
  *
- * <p>{@code datapack/data/mcshaders/binding/beyond_depths.json} is this binding
- * written in the pack format. It is not loaded — wiring the reload listener is still
- * ahead — so it is documentation, and documentation that drifts from the code is
+ * <p>{@code datapack/data/mcshaders/mcshaders/bindings/beyond_depths.json} is this
+ * binding written in the pack format. The doubled {@code mcshaders} is not a typo:
+ * the first is the namespace, the second is this mod's own directory under it, so a
+ * third-party pack contributes at {@code data/<their-namespace>/mcshaders/bindings/}
+ * without colliding with any other mod that wants a {@code bindings} directory.
+ *
+ * <p>It is not loaded — wiring the reload listener is still ahead — so it is
+ * documentation, and documentation that drifts from the code is
  * worse than none. A test parses that exact file and requires it to equal
  * {@link #beyondDepths()}, so the day the listener is wired the example is already
  * known to be readable.

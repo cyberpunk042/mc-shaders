@@ -51,8 +51,8 @@ noise settings.
 
 ## The dynamic half
 
-`data/mcshaders/binding/beyond_depths.json` is the other side of the division of
-labour: fog that closes in below Y 48, which a `dimension_type` has no way to say.
+`data/mcshaders/mcshaders/bindings/beyond_depths.json` is the other side of the
+division of labour: fog that closes in below Y 48, which a `dimension_type` has no way to say.
 Above that depth mc-shaders contributes nothing and the static base above stands
 alone — that is the intended outcome, not a gap.
 
@@ -60,6 +60,12 @@ There is deliberately no `beyond_base` restating the dimension's ordinary fog. T
 `dimension_type` already carries those numbers, and a second copy of a number is a
 number that drifts: the one a pack author edited would stop being the one in force,
 with nothing to say so.
+
+The doubled `mcshaders` is not a typo. The first is the namespace; the second is
+this mod's own directory beneath it. That nesting is what lets a third-party pack
+contribute at `data/<their-namespace>/mcshaders/bindings/` without colliding with
+some other mod that also wants a `bindings` directory — which a flat
+`data/<ns>/bindings/` would not.
 
 **This file is not loaded yet.** The reload listener that would read it is still
 ahead, so the mod registers the same binding in Java, from `BuiltinBindings`. The
