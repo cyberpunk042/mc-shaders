@@ -39,7 +39,7 @@ public final class McShaders {
      * <p>Idempotent: NeoForge and Fabric differ in how many times a mod's
      * construction may be observed, so this guards rather than assuming.
      *
-     * @param log where to send lifecycle messages, supplied by the loader adapter
+     * @param logger where to send lifecycle messages, supplied by the loader adapter
      */
     public static synchronized void init(Consumer<String> logger) {
         if (initialised) {

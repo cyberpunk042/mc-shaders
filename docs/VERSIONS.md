@@ -72,7 +72,7 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 
 | Key | Value | Status | Source |
 |---|---|---|---|
-| `fabric_loom_version` | `1.16-SNAPSHOT` | **Pending CI** | `1.17` was tried first and **does not exist under this plugin id** — see below. `1.16-SNAPSHOT` is what a shipping 26.2 mod uses. Pin concretely once CI reports the resolved version, as was done for `1.15.5`. |
+| `fabric_loom_version` | `1.16.3` | **Verified in CI** | `1.17` was tried first and **does not exist under this plugin id** — see below. `1.16-SNAPSHOT` built, and the runner reported `Fabric Loom: 1.16.3`; pinned to that. |
 | `moddevgradle_version` | `2.0.141` | **Verified in CI** | Gradle Plugin Portal listing for `net.neoforged.moddev` |
 | `gradle_version` | `9.5.1` | **Verified** | Fabric's 26.2 announcement names Gradle 9.5.1. Bumped from `9.4.0`; the wrapper downloaded it and the core build passes on it locally. |
 | `java_version` | `25` | **Verified in CI** | Fabric's 26.1 announcement (minimum for the Gradle JVM) |
@@ -111,8 +111,9 @@ So 1.17 exists as a Loom release but not under **this** plugin id — the newer,
 non-remapping one that 26.x requires. The announcement and the plugin coordinate
 are not the same fact, and only the mod that builds could tell them apart.
 
-`-SNAPSHOT` is not a pin, and is here only until CI reports what it resolves to;
-the same two-step produced the concrete `1.15.5` this build used before.
+`-SNAPSHOT` is not a pin. The green run logged `Fabric Loom: 1.16.3` while
+configuring `:fabric`, so that is what is pinned — the same two-step that
+produced the concrete `1.15.5` this build used before.
 
 ## 26.1-era tooling under a 26.2 target
 
