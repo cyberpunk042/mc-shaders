@@ -71,6 +71,44 @@ public enum GlslType {
         };
     }
 
+    /**
+     * The scalar this type is made of, and how many of them it holds.
+     *
+     * <p>std140 binds by byte offset and a shader ultimately reads scalars, so this is
+     * what lets two declarations of the same bytes be recognised as the same bytes
+     * however each side chose to spell them. A {@code mat4} and sixteen {@code float}s
+     * at the same offset are one thing seen twice.
+     *
+     * @return the component type and its count, e.g. {@code VEC3 -> (FLOAT, 3)}
+     */
+    public Components components() {
+        return switch (this) {
+            case BOOL -> new Components(BOOL, 1);
+            case INT -> new Components(INT, 1);
+            case UINT -> new Components(UINT, 1);
+            case FLOAT -> new Components(FLOAT, 1);
+            case VEC2 -> new Components(FLOAT, 2);
+            case VEC3 -> new Components(FLOAT, 3);
+            case VEC4 -> new Components(FLOAT, 4);
+            case IVEC2 -> new Components(INT, 2);
+            case IVEC3 -> new Components(INT, 3);
+            case IVEC4 -> new Components(INT, 4);
+            case MAT2 -> new Components(FLOAT, 4);
+            case MAT3 -> new Components(FLOAT, 9);
+            case MAT4 -> new Components(FLOAT, 16);
+        };
+    }
+
+    /**
+     * A type broken into the scalars it is made of.
+     *
+     * @param scalar the component type — always one of {@code BOOL}, {@code INT},
+     *               {@code UINT} or {@code FLOAT}
+     * @param count  how many components, e.g. 3 for a {@code vec3}
+     */
+    public record Components(GlslType scalar, int count) {
+    }
+
     public static Optional<GlslType> parse(String name) {
         if (name == null) {
             return Optional.empty();

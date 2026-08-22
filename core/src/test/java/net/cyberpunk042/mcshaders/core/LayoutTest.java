@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import net.cyberpunk042.mcshaders.core.layout.GlslBlocks;
 import net.cyberpunk042.mcshaders.core.layout.GlslType;
@@ -350,7 +351,173 @@ class LayoutTest {
             assertTrue(problems.get(0).isError());
             assertEquals(1, problems.size(),
                     "a host that stops early is one event, however many members follow");
-            assertTrue(problems.get(0).detail().contains("31 member"), problems.get(0).detail());
+            // 31 unwritten vec4s, counted the way the comparison works: in scalar slots,
+            // four to a vec4. The comparison is at scalar level because that is what
+            // std140 binds and what lets a mat4 be recognised as sixteen floats.
+            assertTrue(problems.get(0).detail().contains("124 scalar slot"),
+                    problems.get(0).detail());
+        }
+
+        @Test
+        @DisplayName("a divergence that heals says how far it runs, not that everything after is wrong")
+        void aBoundedDivergenceIsReportedAsBounded() {
+            // Two slots replaced by two others of the same size. Everything before and
+            // after is identical, so calling this "every member after here is read from
+            // the wrong place" sends the reader to audit a whole block over two fields.
+            UniformBlock shader = block("C",
+                    "a", GlslType.FLOAT, "b", GlslType.FLOAT,
+                    "WaveResolution", GlslType.FLOAT, "WaveAmplitude", GlslType.FLOAT,
+                    "y", GlslType.FLOAT, "z", GlslType.FLOAT);
+            UniformBlock host = block("C",
+                    "a", GlslType.FLOAT, "b", GlslType.FLOAT,
+                    "SmoothRadius", GlslType.FLOAT, "Reserved", GlslType.FLOAT,
+                    "y", GlslType.FLOAT, "z", GlslType.FLOAT);
+
+            LayoutMismatch found = LayoutComparison.compare(shader, host).stream()
+                    .filter(m -> m.kind() == LayoutMismatch.Kind.DIVERGENT_MEMBER)
+                    .findFirst().orElseThrow();
+
+            assertEquals(8, found.offset());
+            assertTrue(found.detail().contains("until byte 16"),
+                    "the finding does not say where the two line up again: " + found.detail());
+            assertTrue(found.detail().contains("(2 scalar slot(s))"),
+                    "the finding does not say how many members are affected: " + found.detail());
+            assertFalse(found.detail().contains("every one after it"),
+                    "a bounded divergence was described as unbounded: " + found.detail());
+        }
+
+        @Test
+        @DisplayName("a divergence that never heals still says so")
+        void anUnboundedDivergenceIsReportedAsUnbounded() {
+            // The host gained a member the shader does not have, so every later member
+            // really is shifted and really is read from the wrong place.
+            UniformBlock shader = block("C",
+                    "a", GlslType.FLOAT, "b", GlslType.FLOAT, "c", GlslType.FLOAT);
+            UniformBlock host = block("C",
+                    "a", GlslType.FLOAT, "inserted", GlslType.FLOAT,
+                    "b", GlslType.FLOAT, "c", GlslType.FLOAT);
+
+            LayoutMismatch found = LayoutComparison.compare(shader, host).stream()
+                    .filter(m -> m.kind() == LayoutMismatch.Kind.DIVERGENT_MEMBER)
+                    .findFirst().orElseThrow();
+
+            assertTrue(found.detail().contains("never line up again"), found.detail());
+        }
+
+        @Test
+        @DisplayName("a divergence does not hide a host that also stops short")
+        void sizeIsStillCheckedAfterADivergence() {
+            // The case from the real shaders: a two-slot divergence in the middle, and
+            // separately a shader block far longer than what the host writes. Stopping
+            // at the divergence reported the first and lost the second entirely.
+            UniformBlock shader = block("C",
+                    "a", GlslType.FLOAT, "WaveResolution", GlslType.FLOAT,
+                    "y", GlslType.FLOAT, "tail1", GlslType.VEC4, "tail2", GlslType.VEC4);
+            UniformBlock host = block("C",
+                    "a", GlslType.FLOAT, "SmoothRadius", GlslType.FLOAT,
+                    "y", GlslType.FLOAT);
+
+            List<LayoutMismatch> problems = LayoutComparison.compare(shader, host);
+
+            assertTrue(problems.stream().anyMatch(m ->
+                            m.kind() == LayoutMismatch.Kind.DIVERGENT_MEMBER
+                                    || m.kind() == LayoutMismatch.Kind.UNWRITTEN),
+                    "the member-level disagreement went unreported: " + problems);
+            assertTrue(problems.stream().anyMatch(LayoutMismatch::isError),
+                    "nothing was reported as an error: " + problems);
+            assertTrue(shader.sizeInBytes() > host.sizeInBytes(),
+                    "the fixture no longer exercises a short host");
+        }
+
+        @Test
+        @DisplayName("a bounded divergence does not hide what comes after it")
+        void comparisonContinuesPastABoundedDivergence() {
+            // The shape the real shaders turned out to have: a local two-slot swap, then
+            // agreement, then a second independent problem. Stopping at the first one
+            // reported it and lost the rest.
+            UniformBlock shader = block("C",
+                    "a", GlslType.FLOAT,
+                    "WaveResolution", GlslType.FLOAT, "WaveAmplitude", GlslType.FLOAT,
+                    "shared", GlslType.FLOAT,
+                    "BlendMode", GlslType.FLOAT, "Contrast", GlslType.FLOAT,
+                    "tail", GlslType.FLOAT);
+            UniformBlock host = block("C",
+                    "a", GlslType.FLOAT,
+                    "SmoothRadius", GlslType.FLOAT, "Reserved", GlslType.FLOAT,
+                    "shared", GlslType.FLOAT,
+                    "ReservedSlot3", GlslType.FLOAT, "ReservedSlot4", GlslType.FLOAT,
+                    "tail", GlslType.FLOAT);
+
+            List<LayoutMismatch> divergences = LayoutComparison.compare(shader, host).stream()
+                    .filter(m -> m.kind() == LayoutMismatch.Kind.DIVERGENT_MEMBER)
+                    .toList();
+
+            assertEquals(2, divergences.size(),
+                    "expected both swaps to be reported, got: " + divergences);
+            assertEquals(4, divergences.get(0).offset());
+            assertEquals(16, divergences.get(1).offset());
+        }
+
+        @Test
+        @DisplayName("reserved slots after a bounded divergence are still recognised as reserved")
+        void reservedSlotsSurviveABoundedDivergence() {
+            // The 26 slots the real shaders reserve for camera data were being reported
+            // as part of a catastrophic divergence, because the comparison never got to
+            // them. They are an INFO: the shader ignores what the host writes there.
+            UniformBlock shader = block("C",
+                    "WaveResolution", GlslType.FLOAT,
+                    "shared", GlslType.FLOAT,
+                    "Reserved29_0", GlslType.FLOAT, "Reserved29_1", GlslType.FLOAT);
+            UniformBlock host = block("C",
+                    "SmoothRadius", GlslType.FLOAT,
+                    "shared", GlslType.FLOAT,
+                    "CameraX", GlslType.FLOAT, "CameraY", GlslType.FLOAT);
+
+            List<LayoutMismatch> problems = LayoutComparison.compare(shader, host);
+
+            assertTrue(problems.stream().anyMatch(m ->
+                            m.kind() == LayoutMismatch.Kind.RESERVED_SLOT_WRITTEN),
+                    "the reserved slots were not recognised: " + problems);
+            assertTrue(problems.stream()
+                            .filter(m -> m.kind() == LayoutMismatch.Kind.RESERVED_SLOT_WRITTEN)
+                            .noneMatch(LayoutMismatch::isError),
+                    "writing into a slot the shader reserves was reported as an error");
+        }
+
+        @Test
+        @DisplayName("a matrix written as sixteen floats is the same bytes, not sixteen errors")
+        void aMatrixSpelledAsScalarsAgrees() {
+            // Minecraft's post-effect JSON has no matrix type and no vector type, so a
+            // host passing a mat4 has to write sixteen consecutive floats. Comparing
+            // declarations sees vec4 against float at the same offset and calls it a
+            // type error, then calls the twelve floats inside each vector writes nobody
+            // reads: 8 spurious errors and 24 spurious notes per block in the shaders
+            // this was written against.
+            UniformBlock shader = new UniformBlock("C", List.of(
+                    new Std140.Member("ViewProj", GlslType.VEC4, 4)));
+            List<Std140.Member> asScalars = new ArrayList<>();
+            for (int i = 0; i < 16; i++) {
+                asScalars.add(new Std140.Member("VP" + i, GlslType.FLOAT));
+            }
+
+            assertEquals(List.of(), LayoutComparison.compare(shader, new UniformBlock("C", asScalars)),
+                    "the same sixty-four bytes were reported as a disagreement");
+        }
+
+        @Test
+        @DisplayName("comparing in scalars does not silence a genuine shift")
+        void scalarComparisonStillCatchesAShift() {
+            // The counterpart, and the thing that went wrong on the first attempt: if
+            // every scalar is renamed with a bracket suffix then every name looks
+            // auto-generated, and Radius silently agrees with Inserted at byte 0.
+            UniformBlock shader = block("C", "Radius", GlslType.FLOAT, "Tint", GlslType.VEC4);
+            UniformBlock shifted = block("C",
+                    "Inserted", GlslType.VEC4, "Radius", GlslType.FLOAT, "Tint", GlslType.VEC4);
+
+            List<LayoutMismatch> errors = LayoutComparison.errors(shader, shifted);
+
+            assertFalse(errors.isEmpty(), "a member inserted at the front went unreported");
+            assertEquals(0, errors.get(0).offset(), "everything from byte 0 on is misread");
         }
 
         @Test
