@@ -208,9 +208,16 @@ Make it authorable without Java.
   It lives in `common` rather than `core` for the same reason the shader checker's
   codec does: the engine models bindings, it does not parse them, so the published
   library carries no JSON dependency. 22 tests, and `common` had none before this
-- Datapack loading from `data/<ns>/mcshaders/bindings/*.json`
-- Reload handling — build a fresh registry, swap atomically, ease into it
-- Pack-facing validation errors that name the file and the field
+- Datapack loading from `data/<ns>/mcshaders/bindings/*.json` — **half done**:
+  `BindingLoader` turns a set of files into a registry, skipping the broken ones
+  rather than blanking every dimension over one typo, and reporting what it
+  skipped and what overrode what. Handing it the files is the part that still
+  needs Minecraft's resource manager
+- Reload handling — build a fresh registry, swap atomically, ease into it.
+  `McShaders.setRegistry` is the swap and `Transition` is the easing; what is
+  missing is the reload event that calls them
+- ~~Pack-facing validation errors that name the file and the field~~ — **done**:
+  `nether.json at stack.layers[2].params.dir[1]: expected a number, found a string`
 
 **Done when:** a dimension's look can be changed by editing JSON and running
 `/reload`, with no restart.
