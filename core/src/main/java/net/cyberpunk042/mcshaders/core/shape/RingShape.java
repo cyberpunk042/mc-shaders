@@ -43,7 +43,7 @@ import net.cyberpunk042.mcshaders.core.serial.JsonField;
  * <p>When height > 0, taper controls the top radii relative to bottom:</p>
  * <ul>
  *   <li>taper = 1.0 → no taper (cylinder)</li>
- *   <li>taper < 1.0 → narrower at top (cone-like)</li>
+ *   <li>taper &lt; 1.0 → narrower at top (cone-like)</li>
  *   <li>taper > 1.0 → wider at top (flared)</li>
  *   <li>taper = 0.0 → point at top (full cone)</li>
  * </ul>

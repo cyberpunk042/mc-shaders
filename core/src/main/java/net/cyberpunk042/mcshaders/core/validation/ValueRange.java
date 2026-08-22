@@ -19,7 +19,7 @@ package net.cyberpunk042.mcshaders.core.validation;
  * </pre>
  * 
  * @see Range
- * @see net.cyberpunk042.visual.animation.AlphaRange
+ * @see net.cyberpunk042.mcshaders.core.appearance.AlphaRange
  */
 public enum ValueRange {
     

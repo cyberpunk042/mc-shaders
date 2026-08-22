@@ -9,7 +9,6 @@ import org.joml.Vector3f;
  * to specify which axis the animation operates on.</p>
  * 
  * @see SpinConfig
- * @see OrbitConfig
  */
 public enum Axis {
     /** X-axis (pitch) */

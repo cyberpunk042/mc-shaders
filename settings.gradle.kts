@@ -2,13 +2,16 @@
 // Build layout
 //
 //   core/                 pure Java, zero Minecraft — its own standalone build
+//   check/                pure Java — reads shader packs and validates them
 //   common/               Minecraft-facing code shared by every loader
 //   fabric/, neoforge/    per-loader entrypoints and packaging
 //
-// The core is an *included build* rather than a subproject on purpose: it must
-// stay buildable and testable with a plain JDK and no Minecraft toolchain, which
-// is what lets its 52 tests run anywhere — including environments that cannot
-// reach the Minecraft Maven hosts at all.
+// core/ and check/ are *included builds* rather than subprojects on purpose: they
+// must stay buildable and testable with a plain JDK and no Minecraft toolchain,
+// which is what lets their tests run anywhere — including environments that cannot
+// reach the Minecraft Maven hosts at all. For check/ that is not merely
+// convenient: a shader pack should be validatable in someone else's CI, by someone
+// who has no interest in building this mod.
 //
 // On multiversion: see docs/VERSIONS.md. The per-version property keys and the
 // `mc_version` selector are already in place, so the build reads its Minecraft
@@ -38,6 +41,7 @@ pluginManagement {
 rootProject.name = "mc-shaders"
 
 includeBuild("core")
+includeBuild("check")
 
 include("common")
 include("fabric")

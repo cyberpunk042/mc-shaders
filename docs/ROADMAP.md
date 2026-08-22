@@ -13,7 +13,7 @@ The backend-neutral effect model, in pure Java with no Minecraft dependency.
 - Capability-aware compilation to a render plan (`EffectCompiler`, `EffectGraph`)
 - The backend seam (`EffectBackend`) plus a no-op implementation
 
-**Verified:** 119 tests, 0 failures, on JDK 21.
+**Verified:** 127 tests, 0 failures, on JDK 21.
 
 ## M1.5 — Library surface ✅ done
 
@@ -73,12 +73,76 @@ the enums, effect records and `CellType`/`Facing`/`Axis` they depend on.
 - Contract tests covering all four shapes uniformly, which is what catches an
   automated strip having quietly damaged one of them
 
+## M1.9 — Motion model ✅ done
+
+`Transform`, `OrbitConfig`/`OrbitConfig3D`, and the `animation` and `energy`
+packages — 48 files, the transitive closure `LinkResolver` needs.
+
+- `AnchorResolver` excluded: it takes a `PlayerEntity`, so it is genuinely
+  Minecraft-coupled and belongs in `common`
+- `Waveform.SINE` reimplemented on `java.lang.Math`, since Minecraft's
+  lookup-table `MathHelper` cannot come into core. Behavioural change, so the
+  tests pin its landmarks
+
+## M1.10 — Field model (wires) ✅ done
+
+`Primitive`, `PrimitiveLink`, `LinkResolver` and `SimplePrimitive`, plus the
+shape, pattern, appearance, fill and visibility packages behind them.
+
+- Upstream's link test was a `main()` printing ticks and crosses in
+  `src/main/java`, so it never ran in a build. Its three cases plus ten more are
+  now `LinkModelTest`
+- `ColorTheme`, `ColorThemeRegistry` and `ColorResolver` excluded as
+  Minecraft-coupled; `FieldColor.mix` dropped, its javadoc and its delegate
+  having disagreed about what it did
+
+## M1.11 — Static checking ✅ done
+
+The part of "does this shader pack work?" that needs no GPU.
+
+- `core.layout` — std140 placement, reading a block back out of GLSL, and
+  comparing two declarations of it by byte offset
+- `core.chain` — a chain of passes and targets, and the checks that need the
+  whole chain rather than one pass
+- `check/` — a JSON codec, a resource-tree provider, and a CLI that exits
+  non-zero, so a pack can be gated in CI without the game
+- Findings against `the-virus-block-mc` recorded in
+  [PORTING.md](PORTING.md), with what each does and does not establish
+
+**Not done by this:** whether the GLSL compiles. That needs a driver.
+
+## M1.12 — Editing schema ✅ done
+
+`core.schema` — what is tunable about an effect, described without a toolkit, so
+the same description drives a screen, a web page or a command line.
+
+- Defaults are `ParamValue`, not floats, so a colour is one control
+- Bounds come from `ValueRange`, sharing the vocabulary the library already has
+- `SchemaAudit` compares a schema against the effect it claims to describe
+
+`core.edit.EditSession` is the sitting on top of it: coerce an edit, remember
+enough to undo it, know what changed. The session performs the edit rather than
+offering a history to push to, so history cannot be forgotten.
+
+**Not done by this:** any actual UI. The model is testable off-Minecraft; a
+screen is not.
+
+**Why not the screen.** `common/`, `fabric/` and `neoforge/` currently contain
+five files with **zero** `net.minecraft` imports between them — no Minecraft API
+has ever been compiled in this repository. A screen would be the first, written
+from memory against a 26.2 API that cannot be read from here, verified only by CI
+round-trips. M2 below already says not to write the render hooks from memory; the
+same applies with more force to a GUI. The seam is ready for whoever has the
+sources open.
+
 ## M2 — First rendering backend
 
 Make it draw something.
 
-- Confirm 26.2's post-processing entry points against real sources — **do not
-  write this from memory**, the API is new and unverified here
+- ~~Confirm 26.2's post-processing entry points against real sources~~ — started:
+  see [RENDERING-26.2.md](RENDERING-26.2.md). The engine-wide changes are
+  confirmed and written down; the Fabric-specific hook points are **still
+  unresearched** and belong with the first M2 commit
 - `OpenGLBackend` implementing `EffectBackend`, registered through the same
   `BackendFactory` path third parties use — if the built-in renderer needs privileged
   access, that is a gap in the public API
