@@ -27,9 +27,24 @@ val requiredClasses = listOf(
     "net/cyberpunk042/mcshaders/core/ShaderPipeline.class",
 )
 
+// The datapack has the same problem the classes had, one layer over: it is
+// authored at the repository root and reaches the jar only because both loader
+// builds add it as a resources source directory. Nothing about that is visible to
+// a compiler either — delete the srcDir line and the build still succeeds, shipping
+// a mod whose dimension simply does not exist.
+//
+// It also must NOT be satisfied by a nested jar. `common` is bundled as a library,
+// and a library's data/ is never read as a datapack, so data found only inside a
+// nested jar would pass a naive check while doing nothing in game. These are
+// therefore required at the TOP level of the mod jar.
+val requiredResources = listOf(
+    "data/mcshaders/dimension/beyond.json",
+    "data/mcshaders/dimension_type/beyond.json",
+)
+
 val verifyJarContents = tasks.register("verifyJarContents") {
     group = "verification"
-    description = "Fails if the mod jar is missing classes it needs at runtime."
+    description = "Fails if the mod jar is missing classes or datapack files it needs at runtime."
     dependsOn(tasks.named("assemble"))
 
     doLast {
@@ -50,6 +65,7 @@ val verifyJarContents = tasks.register("verifyJarContents") {
         val jar = candidates.maxByOrNull { it.length() }!!
 
         val found = mutableSetOf<String>()
+        val foundResources = mutableSetOf<String>()
         val nestedJars = mutableListOf<String>()
 
         java.util.zip.ZipFile(jar).use { outer ->
@@ -57,6 +73,10 @@ val verifyJarContents = tasks.register("verifyJarContents") {
                 if (!entry.name.endsWith(".jar")) {
                     if (entry.name in requiredClasses) {
                         found += entry.name
+                    }
+                    // Top level only — see the note on requiredResources.
+                    if (entry.name in requiredResources) {
+                        foundResources += entry.name
                     }
                     continue
                 }
@@ -74,6 +94,22 @@ val verifyJarContents = tasks.register("verifyJarContents") {
                     }
                 }
             }
+        }
+
+        val missingResources = requiredResources - foundResources
+        if (missingResources.isNotEmpty()) {
+            error(
+                buildString {
+                    appendLine("${jar.name} is missing ${missingResources.size} datapack file(s):")
+                    missingResources.forEach { appendLine("  - $it") }
+                    appendLine()
+                    append(
+                        "These must be at the TOP level of the mod jar. A jar-in-jar library's "
+                            + "data/ is never read as a datapack, so bundling is not enough - the "
+                            + "loader build needs a resources srcDir pointing at datapack/."
+                    )
+                }
+            )
         }
 
         val missing = requiredClasses - found
@@ -104,7 +140,8 @@ val verifyJarContents = tasks.register("verifyJarContents") {
 
         logger.lifecycle(
             "verifyJarContents: ${jar.name} carries all ${requiredClasses.size} required classes"
-                + " across ${nestedJars.size} nested jar(s)"
+                + " across ${nestedJars.size} nested jar(s),"
+                + " and all ${requiredResources.size} datapack file(s) at the top level"
         )
     }
 }
