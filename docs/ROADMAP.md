@@ -120,9 +120,20 @@ the same description drives a screen, a web page or a command line.
 - Bounds come from `ValueRange`, sharing the vocabulary the library already has
 - `SchemaAudit` compares a schema against the effect it claims to describe
 
+`core.edit.EditSession` is the sitting on top of it: coerce an edit, remember
+enough to undo it, know what changed. The session performs the edit rather than
+offering a history to push to, so history cannot be forgotten.
+
 **Not done by this:** any actual UI. The model is testable off-Minecraft; a
-screen is not, and building one blind is how the earlier claims in this project
-went wrong.
+screen is not.
+
+**Why not the screen.** `common/`, `fabric/` and `neoforge/` currently contain
+five files with **zero** `net.minecraft` imports between them — no Minecraft API
+has ever been compiled in this repository. A screen would be the first, written
+from memory against a 26.2 API that cannot be read from here, verified only by CI
+round-trips. M2 below already says not to write the render hooks from memory; the
+same applies with more force to a GUI. The seam is ready for whoever has the
+sources open.
 
 ## M2 — First rendering backend
 

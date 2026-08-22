@@ -16,6 +16,7 @@ import net.cyberpunk042.mcshaders.core.binding.DimensionBinding;
 import net.cyberpunk042.mcshaders.core.binding.DimensionId;
 import net.cyberpunk042.mcshaders.core.binding.Weather;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
+import net.cyberpunk042.mcshaders.core.edit.EditSession;
 import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectKind;
 import net.cyberpunk042.mcshaders.core.effect.EffectLayer;
@@ -302,5 +303,30 @@ class LibraryDocExampleTest {
         assertTrue(SchemaAudit.audit(schema, shipped).stream()
                 .anyMatch(p -> p.kind() == net.cyberpunk042.mcshaders.core.schema.SchemaProblem.Kind
                         .DEFAULT_OUT_OF_RANGE));
+    }
+
+    // ── docs: Editing a set of values ───────────────────────────────────────────
+
+    @Test
+    @DisplayName("the edit-session example coerces, tracks changes and undoes")
+    void editSessionExample() {
+        EffectSchema schema = EffectSchema.builder("Orb", "energy_orb", 1)
+                .group("Core",
+                        ParamSpec.slider("core.size", "Core Size", 0, 1, 0.15, "Core"),
+                        ParamSpec.toggle("core.glow", "Glow", true, "Core"))
+                .build();
+
+        EditSession session = EditSession.of(schema);
+        session.set("core.size", new ParamValue.Scalar(0.9));
+        session.set("core.glow", new ParamValue.Flag(false));
+
+        assertEquals(Set.of("core.size", "core.glow"), session.changedKeys());
+        assertTrue(session.undo());
+        assertTrue(session.current().flagOr("core.glow", false), "the toggle is back");
+
+        // A set that changes nothing is not a step, as the prose claims.
+        int before = session.historyDepth();
+        assertTrue(!session.set("core.size", new ParamValue.Scalar(0.9)));
+        assertEquals(before, session.historyDepth());
     }
 }

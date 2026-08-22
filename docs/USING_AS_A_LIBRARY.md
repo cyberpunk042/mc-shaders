@@ -296,6 +296,33 @@ to describe — a control bound to a key nothing carries does nothing when dragg
 parameter no control reaches cannot be edited, and a shipped default outside its own
 declared range changes the first time someone opens the panel and closes it again.
 
+## Editing a set of values
+
+`EditSession` is the sitting between a schema and the values: it coerces each edit
+to what the schema permits, remembers enough to undo it, and knows what has changed
+since the sitting began.
+
+```java
+EditSession session = EditSession.of(schema);
+
+session.set("core.size", new ParamValue.Scalar(0.9));   // coerced to the spec
+session.set("core.glow", new ParamValue.Flag(false));
+
+session.changedKeys();   // ["core.size", "core.glow"] — what to mark as touched
+session.undo();
+session.current();       // hand this to the renderer
+```
+
+The session performs the edit rather than offering a history to push to. The
+alternative works until someone forgets to push, and then an edit is quietly
+un-undoable — a bug that surfaces nowhere near the omission. Two consequences
+worth knowing:
+
+- **A change that changes nothing is not a step.** Dragging a slider away and back
+  would otherwise fill the history with steps that do nothing when undone.
+- **Coercion happens before that test**, so two different sets that clamp to the
+  same value are one edit, not two.
+
 ## Compatibility notes
 
 - **Optional integration**: guard your calls with your loader's "is this mod present"
