@@ -299,12 +299,24 @@ is not usually what is wrong.
 | `shockwave_ring` | `ShockwaveConfig` truncated at byte 144 — 40 members unwritten |
 | `virus_block` | `VirusBlockParams` truncated at byte 288 — 31 unwritten |
 
-The four `depth_*` are worth separating from the rest. `DepthTestShader` is live
-— reachable by keybind and from the GUI, with two mixins behind it — but
-`loadPostEffect` throws on the missing shader, the throw is caught and logged,
-and the call returns null. So all four modes are wired up and do nothing, quietly.
-That is the same shape of failure as the layout drift, one level up: the
-information needed to notice was there all along, and nothing was looking.
+The four `depth_*` are worth separating, and then separating again once you read
+what they are. `DepthTestShader` is reachable — keybind, a GUI node, two mixins —
+and `loadPostEffect` throws on the missing shader, the throw is caught and logged,
+and the call returns null, so all four modes are wired up and quietly do nothing.
+
+But its own javadoc describes a depth-buffer *testing* harness driven by a
+`/depthtest` command, and `WorldRendererDepthTestMixin` calls it legacy and
+prefers `DirectDepthRendererArchive` and `ShockwaveGlowRendererArchive` ahead of
+it. The four `.fsh` files are not lost: they sit in `post/_archive/`. Read
+together, that is a debug harness that was deliberately retired, leaving the
+wiring behind — not shaders that went missing by accident.
+
+Which makes the fix a judgement call rather than a repair. Restoring the files
+would revive superseded tooling; deleting the four pipelines and reducing the
+mode list to what still works would retire it properly. Both are reasonable and
+neither is the checker's to decide. What the checker is for is that nobody had to
+guess: the pipelines say what they need, the tree says what is there, and the two
+disagree.
 
 Vanilla shader ids (`minecraft:post/blit`, `minecraft:post/sobel`) resolve
 through the resource manager in game. A checker pointed at a mod's asset tree
