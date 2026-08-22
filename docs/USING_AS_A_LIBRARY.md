@@ -365,6 +365,43 @@ cylinder, polyhedron and molecule. A shape it does not recognise yields
 unfamiliar shape should get nothing drawn, not a thrown frame. The rest of the
 tessellators — rays, jets, capsules, cones, tori — are called directly.
 
+### Links resolve to values; applying them is yours
+
+A `PrimitiveLink` is a constraint, not a drawn wire: *take your radius from that one,
+mirror its position, inherit its colour, orbit in step with it*. `LinkResolver` turns
+those into numbers.
+
+```java
+Map<String, Primitive> index = LinkResolver.buildIndex(primitives);
+LinkResolver.ResolvedValues resolved = LinkResolver.resolveLinks(ring, index);
+```
+
+Everything it returns is *computed*, never applied — primitives and shapes are
+immutable records. For most of it that is the natural shape: `offset` and `scale` go
+into a transform, `color` and `alpha` into a draw call, `orbitPhaseOffset` into an
+animation clock.
+
+**`radius` is the exception, and it is the one that bites.** Applying it means building
+a different `Shape`, and "set the radius" is not one operation across shape types — a
+sphere has one radius, a ring has an inner and an outer, a cylinder has a radius and a
+top radius. Core does not choose for you, so `resolveRadius` hands back a number and
+stops:
+
+```java
+Shape shape = ring.shape();
+if (resolved.hasRadius() && shape instanceof SphereShape) {
+    shape = SphereShape.ofRadius(resolved.radius());   // the step that is easy to omit
+}
+Mesh mesh = Tessellator.tessellate(shape, 0);
+```
+
+This is worth spelling out because in the mod this code came from, **nothing performed
+that step**. The renderer consumed `offset`, `scale`, `color`, `alpha`, `orbitConfig`,
+`orbitPhaseOffset` and `followDynamic` — and never `radius`. A content author writing
+`radiusMatch` got a link that validated, resolved to the right number, and changed
+nothing on screen. `LinkResolverTest` pins both halves: that resolving alone leaves the
+shape alone, and that doing the last step is what makes the mesh change size.
+
 ### Diagnostics
 
 The tessellators log what they were asked for and what they produced, through

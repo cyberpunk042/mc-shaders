@@ -15,6 +15,9 @@ import net.cyberpunk042.mcshaders.core.field.LinkResolver;
 import net.cyberpunk042.mcshaders.core.field.Primitive;
 import net.cyberpunk042.mcshaders.core.field.PrimitiveLink;
 import net.cyberpunk042.mcshaders.core.field.SimplePrimitive;
+import net.cyberpunk042.mcshaders.core.mesh.Mesh;
+import net.cyberpunk042.mcshaders.core.mesh.Tessellator;
+import net.cyberpunk042.mcshaders.core.mesh.Vertex;
 import net.cyberpunk042.mcshaders.core.fill.FillConfig;
 import net.cyberpunk042.mcshaders.core.pattern.ArrangementConfig;
 import net.cyberpunk042.mcshaders.core.shape.RingShape;
@@ -226,6 +229,68 @@ class LinkResolverTest {
                     "asking for alpha produced none");
             assertTrue(LinkResolver.resolveAlpha(colourOnly, index) < 0,
                     "asking for colour only produced an alpha too");
+        }
+    }
+
+    @Nested
+    @DisplayName("resolving is not applying")
+    class ResolvingIsNotApplying {
+
+        @Test
+        @DisplayName("a resolved radius does not change the primitive it was resolved for")
+        void resolvedRadiusDoesNotReachTheShape() {
+            // The trap this pins: the link validates, resolves to the right number, and
+            // the ring is still the size it always was. In the mod this came from,
+            // nothing read the resolved radius at all — the renderer used offset, scale,
+            // colour, alpha and orbit, and never this — so radiusMatch was a link that
+            // did nothing on screen.
+            SimplePrimitive sphere = primitive("sphere_1", "sphere", SphereShape.ofRadius(2.0f),
+                    PrimitiveLink.NONE);
+            SimplePrimitive ring = primitive("ring_1", "ring", RingShape.at(0.8f, 1.0f, 0.0f),
+                    PrimitiveLink.radiusMatch("sphere_1", 0.5f));
+
+            LinkResolver.ResolvedValues resolved = LinkResolver.resolveLinks(ring, index(sphere));
+
+            assertEquals(2.5f, resolved.radius(), TOLERANCE, "the link did not resolve");
+            assertEquals(1.0f, ring.shape().getRadius(), TOLERANCE,
+                    "resolveLinks mutated the primitive — it is supposed to be a pure computation");
+        }
+
+        @Test
+        @DisplayName("the caller applying it is what makes the mesh change size")
+        void applyingItIsTheCallersStep() {
+            // The worked example from LinkResolver's class documentation, held to being
+            // true: doing the last step produces a bigger mesh, and skipping it does not.
+            SimplePrimitive core = primitive("core", "sphere", SphereShape.ofRadius(2.0f),
+                    PrimitiveLink.NONE);
+            SimplePrimitive shell = primitive("shell", "sphere", SphereShape.ofRadius(1.0f),
+                    PrimitiveLink.radiusMatch("core", 0.5f));
+
+            LinkResolver.ResolvedValues resolved =
+                    LinkResolver.resolveLinks(shell, index(core));
+
+            Shape unapplied = shell.shape();
+            Shape applied = resolved.hasRadius()
+                    ? SphereShape.ofRadius(resolved.radius())
+                    : unapplied;
+
+            float unappliedExtent = extent(Tessellator.tessellate(unapplied, 0));
+            float appliedExtent = extent(Tessellator.tessellate(applied, 0));
+
+            assertEquals(1.0f, unappliedExtent, 1e-2f, "the unlinked shell should still be r=1");
+            assertEquals(2.5f, appliedExtent, 1e-2f, "the applied shell should be r=2.5");
+            assertTrue(appliedExtent > unappliedExtent,
+                    "applying the resolved radius did not produce a larger mesh");
+        }
+
+        /** How far the furthest vertex sits from the origin. */
+        private float extent(Mesh mesh) {
+            float max = 0;
+            for (Vertex v : mesh.vertices()) {
+                max = Math.max(max, (float) Math.sqrt(
+                        v.x() * v.x() + v.y() * v.y() + v.z() * v.z()));
+            }
+            return max;
         }
     }
 

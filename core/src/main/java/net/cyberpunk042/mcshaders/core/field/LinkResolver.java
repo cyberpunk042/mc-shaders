@@ -42,7 +42,40 @@ import java.util.*;
  *   <li><b>Unknown ID</b>: Logs error, link ignored</li>
  *   <li><b>Self reference</b>: Logs error, link ignored</li>
  * </ul>
- * 
+ *
+ * <h2>Resolving is not applying</h2>
+ *
+ * <p>Every method here <em>computes</em> a value. Nothing here changes a primitive:
+ * primitives and shapes are immutable records, so applying a resolved value means the
+ * caller building a new one. For most of {@link ResolvedValues} that is natural —
+ * {@code offset} and {@code scale} go into a transform matrix, {@code color} and
+ * {@code alpha} into a draw call, {@code orbitPhaseOffset} into an animation clock.
+ *
+ * <p><b>{@code radius} is the exception, and it is worth knowing about.</b> Applying it
+ * means constructing a different {@link net.cyberpunk042.mcshaders.core.shape.Shape},
+ * and what "set the radius" means is not the same across shapes: a sphere has one
+ * radius, a ring has an inner and an outer, a cylinder has a radius and a top radius,
+ * a torus has a ring radius and a tube radius. Core does not choose for you, so
+ * {@link #resolveRadius} hands back a number and stops.
+ *
+ * <p>This is a real trap rather than a theoretical one. In the mod this code came from,
+ * nothing read the resolved radius — the renderer consumed {@code offset},
+ * {@code scale}, {@code color}, {@code alpha}, {@code orbitConfig},
+ * {@code orbitPhaseOffset} and {@code followDynamic}, and never {@code radius}. So a
+ * content author writing {@code radiusMatch} got a link that validated, resolved, and
+ * changed nothing on screen. Do the last step:
+ *
+ * <pre>
+ * Map&lt;String, Primitive&gt; index = LinkResolver.buildIndex(primitives);
+ * ResolvedValues resolved = LinkResolver.resolveLinks(ring, index);
+ *
+ * Shape shape = ring.shape();
+ * if (resolved.hasRadius() &amp;&amp; shape instanceof SphereShape s) {
+ *     shape = SphereShape.ofRadius(resolved.radius());   // the step that is easy to omit
+ * }
+ * Mesh mesh = Tessellator.tessellate(shape, 0);
+ * </pre>
+ *
  * @see PrimitiveLink
  * @see Primitive
  */
@@ -121,11 +154,17 @@ public final class LinkResolver {
     // =========================================================================
     
     /**
-     * Resolves radius from a linked primitive.
-     * 
-     * @param link The link configuration
-     * @param primitiveIndex Index of primitives by ID
-     * @return Resolved radius, or -1 if link is invalid
+     * Resolves the radius a primitive should take from the one it links to.
+     *
+     * <p>The result is the target's {@link Primitive#getRadius()} plus the link's
+     * {@code radiusOffset}. <b>Applying it is the caller's job</b> — see the class
+     * documentation for why core stops here, and for the step that is easy to leave
+     * out.
+     *
+     * @param link           the link configuration
+     * @param primitiveIndex the primitives visible to this one, by id
+     * @return the resolved radius, or -1 if the link is absent, not a radius link, or
+     *         names a primitive that is not in {@code primitiveIndex}
      */
     public static float resolveRadius(PrimitiveLink link, Map<String, Primitive> primitiveIndex) {
         if (link == null || !link.radiusMatch() || link.target() == null) {
@@ -343,9 +382,13 @@ public final class LinkResolver {
     // =========================================================================
     
     /**
-     * Container for resolved link values.
-     * Used by builders/parsers to construct primitives with linked properties.
-     * @param radius Resolved radius (-1 if not linked)
+     * The values a primitive's links resolved to.
+     *
+     * <p>These are computed, not applied — see {@link LinkResolver} on what that means
+     * for {@code radius} in particular.
+     *
+     * @param radius Resolved radius (-1 if not linked). Applying it means building a
+     *               new shape; nothing downstream of here does that for you.
      * @param offset Resolved offset (null if not linked)
      * @param scale Resolved scale (-1 if not linked)
      * @param phaseOffset Animation phase offset (0 if not linked)
