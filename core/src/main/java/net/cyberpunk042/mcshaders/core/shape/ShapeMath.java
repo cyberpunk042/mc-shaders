@@ -151,7 +151,7 @@ public final class ShapeMath {
      * @param theta Polar angle (0 = top pole, π = bottom pole)
      * @param phi Azimuthal angle (0 to 2π)
      * @param radius Base radius
-     * @param length Polar axis ratio (1 = sphere height, <1 = squashed, >1 = stretched)
+     * @param length Polar axis ratio (1 = sphere height, &lt;1 = squashed, &gt;1 = stretched)
      * @param bulge Equatorial bulge factor (0 = sphere width, 0.5 = 50% wider equator)
      */
     public static float[] spheroidWithBulge(float theta, float phi, float radius, 
@@ -613,7 +613,7 @@ public final class ShapeMath {
         
         for (int i = 0; i < count; i++) {
             // Fibonacci spiral distribution (even coverage)
-            float t = (float) (i + 0.5f) / (float) count;
+            float t = (i + 0.5f) / (float) count;
             float puffTheta = (float) Math.acos(1.0f - 2.0f * t);
             float puffPhi = goldenAngle * i;
             
@@ -695,7 +695,7 @@ public final class ShapeMath {
         float primaryRadius = 0.6f + smoothness * 0.4f;  // Wide puffs
         
         for (int i = 0; i < primaryCount; i++) {
-            float t = (float) (i + 0.5f) / (float) primaryCount;
+            float t = (i + 0.5f) / (float) primaryCount;
             float pTheta = (float) Math.acos(1.0f - 2.0f * t);
             float pPhi = goldenAngle * i;
             
@@ -723,7 +723,7 @@ public final class ShapeMath {
         float secondaryRadius = 0.3f + smoothness * 0.2f;
         
         for (int i = 0; i < secondaryCount; i++) {
-            float t = (float) (i + 0.5f) / (float) secondaryCount;
+            float t = (i + 0.5f) / (float) secondaryCount;
             float pTheta = (float) Math.acos(1.0f - 2.0f * t);
             float pPhi = goldenAngle * i * 1.618f;  // Different spiral
             
@@ -773,7 +773,7 @@ public final class ShapeMath {
         
         for (int i = 0; i < cellCount; i++) {
             // Cell center (Fibonacci spiral)
-            float t = (float) (i + 0.5f) / (float) cellCount;
+            float t = (i + 0.5f) / (float) cellCount;
             float cTheta = (float) Math.acos(1.0f - 2.0f * t);
             float cPhi = goldenAngle * i;
             
@@ -906,7 +906,7 @@ public final class ShapeMath {
             
             for (int i = 0; i < craterCount; i++) {
                 // Crater center position (Fibonacci spiral for even distribution)
-                float t = (float) (i + 0.5f) / (float) craterCount;
+                float t = (i + 0.5f) / (float) craterCount;
                 float craterTheta = (float) Math.acos(1.0f - 2.0f * t);
                 float craterPhi = goldenAngle * i;
                 

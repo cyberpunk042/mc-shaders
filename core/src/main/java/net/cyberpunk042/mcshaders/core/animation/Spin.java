@@ -32,7 +32,6 @@ package net.cyberpunk042.mcshaders.core.animation;
  * @param y rotation speed around Y axis (radians per tick)
  * @param z rotation speed around Z axis (radians per tick)
  * 
- * @see Animator
  * @see net.cyberpunk042.mcshaders.core.animation.Animation
  */
 public record Spin(float x, float y, float z) {

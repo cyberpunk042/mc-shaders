@@ -26,7 +26,6 @@ import org.joml.Vector3f;
  * 
  * @see OrbitConfig
  * @see Transform
- * @see TransformApplier
  */
 public final class OrbitAnimator {
     

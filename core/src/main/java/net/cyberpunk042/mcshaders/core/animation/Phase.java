@@ -29,7 +29,7 @@ package net.cyberpunk042.mcshaders.core.animation;
  * Phase phase = Phase.of(0.25f);
  * 
  * // Stagger 5 rings
- * for (int i = 0; i < 5; i++) {
+ * for (int i = 0; i &lt; 5; i++) {
  *     Phase phase = Phase.stagger(i, 5);  // 0, 0.2, 0.4, 0.6, 0.8
  * }
  * </pre>
@@ -38,7 +38,6 @@ package net.cyberpunk042.mcshaders.core.animation;
  * 
  * @see SpinConfig
  * @see PulseConfig
- * @see net.cyberpunk042.client.visual.animation.AnimationApplier
  */
 public record Phase(float offset) {
     

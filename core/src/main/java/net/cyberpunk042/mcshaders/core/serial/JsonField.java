@@ -32,7 +32,6 @@ import java.lang.annotation.Target;
  * private transient String snapshotJson;  // Not saved in JSON
  * }</pre>
  * 
- * @see JsonSerializer
  */
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.FIELD)

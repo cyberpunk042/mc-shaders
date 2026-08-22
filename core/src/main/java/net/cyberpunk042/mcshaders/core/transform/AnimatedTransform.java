@@ -18,7 +18,6 @@ import org.joml.Vector3f;
  * <p>Used for smooth transitions during lifecycle animations (spawn/despawn).</p>
  * 
  * @see Transform
- * @see net.cyberpunk042.field.influence.LifecycleConfig
  */
 public class AnimatedTransform {
     

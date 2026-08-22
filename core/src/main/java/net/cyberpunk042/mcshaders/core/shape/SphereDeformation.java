@@ -86,7 +86,7 @@ public enum SphereDeformation {
      * @param phi Azimuthal angle (0 to 2π)
      * @param radius Base radius
      * @param intensity Deformation intensity (0 = sphere, 1 = full effect)
-     * @param length Axial stretch factor (1 = normal, >1 = elongated, <1 = squashed)
+     * @param length Axial stretch factor (1 = normal, &gt;1 = elongated, &lt;1 = squashed)
      * @return {x, y, z} vertex position
      */
     public float[] computeVertex(float theta, float phi, float radius, 

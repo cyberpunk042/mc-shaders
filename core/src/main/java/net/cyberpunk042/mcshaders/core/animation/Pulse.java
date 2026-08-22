@@ -32,7 +32,6 @@ package net.cyberpunk042.mcshaders.core.animation;
  * @param frequency oscillation speed (cycles per second)
  * @param phase     phase offset (0-1)
  * 
- * @see Animator
  * @see net.cyberpunk042.mcshaders.core.animation.Animation
  */
 public record Pulse(float amplitude, float frequency, float phase) {

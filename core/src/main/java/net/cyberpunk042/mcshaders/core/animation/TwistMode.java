@@ -26,7 +26,6 @@ package net.cyberpunk042.mcshaders.core.animation;
  * and twist simultaneously.</p>
  * 
  * @see RayTwistConfig
- * @see RayLineShape
  */
 public enum TwistMode {
     
