@@ -84,6 +84,46 @@ packages — 48 files, the transitive closure `LinkResolver` needs.
   lookup-table `MathHelper` cannot come into core. Behavioural change, so the
   tests pin its landmarks
 
+## M1.10 — Field model (wires) ✅ done
+
+`Primitive`, `PrimitiveLink`, `LinkResolver` and `SimplePrimitive`, plus the
+shape, pattern, appearance, fill and visibility packages behind them.
+
+- Upstream's link test was a `main()` printing ticks and crosses in
+  `src/main/java`, so it never ran in a build. Its three cases plus ten more are
+  now `LinkModelTest`
+- `ColorTheme`, `ColorThemeRegistry` and `ColorResolver` excluded as
+  Minecraft-coupled; `FieldColor.mix` dropped, its javadoc and its delegate
+  having disagreed about what it did
+
+## M1.11 — Static checking ✅ done
+
+The part of "does this shader pack work?" that needs no GPU.
+
+- `core.layout` — std140 placement, reading a block back out of GLSL, and
+  comparing two declarations of it by byte offset
+- `core.chain` — a chain of passes and targets, and the checks that need the
+  whole chain rather than one pass
+- `check/` — a JSON codec, a resource-tree provider, and a CLI that exits
+  non-zero, so a pack can be gated in CI without the game
+- Findings against `the-virus-block-mc` recorded in
+  [PORTING.md](PORTING.md), with what each does and does not establish
+
+**Not done by this:** whether the GLSL compiles. That needs a driver.
+
+## M1.12 — Editing schema ✅ done
+
+`core.schema` — what is tunable about an effect, described without a toolkit, so
+the same description drives a screen, a web page or a command line.
+
+- Defaults are `ParamValue`, not floats, so a colour is one control
+- Bounds come from `ValueRange`, sharing the vocabulary the library already has
+- `SchemaAudit` compares a schema against the effect it claims to describe
+
+**Not done by this:** any actual UI. The model is testable off-Minecraft; a
+screen is not, and building one blind is how the earlier claims in this project
+went wrong.
+
 ## M2 — First rendering backend
 
 Make it draw something.
