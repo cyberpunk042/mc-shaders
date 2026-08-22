@@ -210,7 +210,7 @@ public final class ShaderCheck {
         if (orphans.isEmpty()) {
             return;
         }
-        System.out.printf("%n%d shader file(s) no chain reaches. Some of these are expected —%n"
+        System.out.printf("%n%d shader file(s) no chain reaches. Some of these are expected:%n"
                 + "Minecraft's core shaders are named directly rather than through a chain, and a%n"
                 + "variant kept on purpose is not a defect. A file nothing names and a chain naming%n"
                 + "a file that is not there are usually one event seen from opposite ends:%n",
