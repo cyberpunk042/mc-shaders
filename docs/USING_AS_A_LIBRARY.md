@@ -323,6 +323,63 @@ worth knowing:
 - **Coercion happens before that test**, so two different sets that clamp to the
   same value are one edit, not two.
 
+## Turning a shape into geometry
+
+Everything above describes effects. The other half of the library is geometry: the
+field system's shapes are parameter records — a sphere is a radius, a segment count
+and an algorithm — and `core.mesh` is what turns one into vertices.
+
+```java
+Mesh mesh = Tessellator.tessellate(SphereShape.of(1.0f), 0);
+
+mesh.vertexCount();      // how many points
+mesh.indices();          // triangle indices, all inside [0, vertexCount)
+mesh.primitiveType();    // TRIANGLES, QUADS, LINES, ...
+
+mesh.forEachTriangle((a, b, c) -> emit(a, b, c));
+```
+
+A `Mesh` is plain data: positions, normals, texture coordinates, indices. Handing it
+to a graphics API is yours to do, and core deliberately does not reach for one — that
+is the same line the rest of the library draws.
+
+**Resolution comes from the shape, not from the `detail` argument.** No tessellator
+reads `detail`, and the `DetailLevel` enum beside it is equally inert; both predate
+the move to shape-carried resolution and were left behind. To change how fine a mesh
+is, change the shape's own `segments`, `heightSegments` or `subdivisions`:
+
+```java
+CylinderShape coarse = CylinderShape.of(1.0f, 2.0f);          // 32 segments
+CylinderShape fine   = new CylinderShape(1.0f, 2.0f, 128,     // 128 segments
+        coarse.topRadius(), coarse.heightSegments(),
+        coarse.capTop(), coarse.capBottom(), coarse.arc());
+```
+
+They are documented rather than deleted because removing them is a breaking change
+to make deliberately. `TessellationTest` pins the behaviour, so if a tessellator ever
+starts honouring `detail`, a test fails and this paragraph gets corrected with it.
+
+`Tessellator.tessellate` dispatches on shape type and covers sphere, ring, prism,
+cylinder, polyhedron and molecule. A shape it does not recognise yields
+`Mesh.empty()` and a warning rather than an exception — a consumer passing an
+unfamiliar shape should get nothing drawn, not a thrown frame. The rest of the
+tessellators — rays, jets, capsules, cones, tori — are called directly.
+
+### Diagnostics
+
+The tessellators log what they were asked for and what they produced, through
+`java.lang.System.Logger`. There is nothing to add and nothing to initialise: under
+Minecraft it lands in the usual log, in a test it goes to the console, and in a
+consumer that never configures logging it goes nowhere. Enable `DEBUG` on
+`net.cyberpunk042.mcshaders.core.render` to see lines like
+
+```
+tessellate: Tessellating cylinder shape=cylinder radius=1.0 segments=3 wave=true
+```
+
+which is normally enough to explain a mesh that came out wrong. Nothing is formatted
+while the level is off.
+
 ## Compatibility notes
 
 - **Optional integration**: guard your calls with your loader's "is this mod present"

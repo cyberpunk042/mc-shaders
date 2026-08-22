@@ -37,7 +37,6 @@ package net.cyberpunk042.mcshaders.core.energy;
  *   <li>OSCILLATION: phase 0→0.5→1 = shrink→expand→shrink</li>
  *   <li>RESONANCE: phase 0→0.5 = grow, phase 0.5→1 = shrink</li>
  * </ul>
- * </p>
  * 
  * @see EnergyInteractionType
  */

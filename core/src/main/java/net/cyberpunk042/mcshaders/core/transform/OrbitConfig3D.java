@@ -236,12 +236,14 @@ public record OrbitConfig3D(
      * 
      * <p>Creates proper circular orbits automatically:
      * <ul>
-     * <ul>
      *   <li>2D Orbit modes (CIRCULAR, ELLIPTIC, FIGURE_8): X→XZ plane, Y→YX plane, Z→ZY plane</li>
      *   <li>Single-axis modes (WAVE, OSCILLATION, BOUNCE): Only affect that axis</li>
      * </ul>
-     * <p>When 2 axes are orbit modes: combined diagonal orbit (additive).</p>
-     * <p>When 3 axes are orbit modes: PRECESSING ORBIT - base circle is ROTATED by 3rd axis.</p>
+     *
+     * <p>When 2 axes are orbit modes: combined diagonal orbit (additive).
+     *
+     * <p>When 3 axes are orbit modes: PRECESSING ORBIT - the base circle is rotated by
+     * the third axis.
      * 
      * @param time Time in ticks
      * @return Offset vector from center
@@ -492,7 +494,6 @@ public record OrbitConfig3D(
      *   <li>Y config: precession around Y + Y's own perpendicular motion</li>
      *   <li>Z config: nutation around X + Z's own perpendicular motion</li>
      * </ul>
-     * </p>
      * 
      * <p>Examples:
      * <ul>
@@ -500,7 +501,6 @@ public record OrbitConfig3D(
      *   <li>X=HELIX, Y=WOBBLE, Z=CIRCULAR: helix + Y's rock + Z's precession</li>
      *   <li>X=PENDULUM, Y=CIRCULAR, Z=CIRCULAR: swinging arc that precesses</li>
      * </ul>
-     * </p>
      */
     private Vector3f getPrecessingOffset(float time) {
         // ========== STEP 1: Get base shape from X config ==========

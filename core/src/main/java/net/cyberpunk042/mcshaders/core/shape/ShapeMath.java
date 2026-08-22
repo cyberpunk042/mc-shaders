@@ -143,7 +143,6 @@ public final class ShapeMath {
      *   <li><b>length:</b> Controls polar axis stretch (c = radius * length)</li>
      *   <li><b>bulge:</b> Controls additional equatorial bulge (0 = no extra, 0.5 = 50% wider)</li>
      * </ul>
-     * </p>
      * 
      * <p>This simulates a spinning planet where centrifugal force makes the equator
      * bulge outward independently of how tall/short the poles are.</p>
