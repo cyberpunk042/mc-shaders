@@ -229,11 +229,14 @@ counting slots calls it what it is.
 The table above compares the **pipeline JSON against the GLSL**. Two caveats
 follow from that, and both matter before acting on it:
 
-- The **Java record agrees with the GLSL** on the two things that were checked:
-  both come to 928 bytes, and both put their two `mat4` members at slots 33 and
-  37. Per-member names between record and GLSL were *not* compared — that needs
-  the ~50 nested `@Vec4` types expanded — so "the record is correct" is not
-  established here, only "the record is not obviously misaligned".
+- The **Java record agrees with the GLSL** as far as anything static can tell.
+  Expanding its ~50 nested `@Vec4` types gives 208 entries against the GLSL's
+  208, the same 928 bytes, and both matrices at slots 33 and 37. Their *names*
+  turn out not to be comparable at all: the nested types use local component
+  names — `PrimaryColorVec4` is `(r, g, b, a)`, not `(PrimaryR, PrimaryG, …)` —
+  so from slot 1 onward there is nothing to match against. Structure agrees;
+  whether slot *n* means the same thing on both sides cannot be established
+  without reading each type's use, or running it.
 - `PostEffectPassMixin` builds and substitutes its own buffer rather than filling
   the one the pipeline JSON declares, so the JSON's byte total is not necessarily
   what the GPU sees. That does not make the divergence harmless — the JSON is
