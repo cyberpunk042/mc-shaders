@@ -82,6 +82,27 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Verified in CI** | Started as the least confident value in the table, derived from the documented `26.2.0.x` prefix scheme; it resolved and built. Newer builds exist (the Maven listing shows at least `26.2.0.62`), so this is a deliberate pin, not the latest. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
 
+## Cross-checked against a shipping 26.2 mod
+
+Announcements say what a version *recommends*; a mod that actually builds says
+what works. [`Snownee/Jade`](https://github.com/Snownee/Jade/tree/26.2-fabric)
+targets 26.2 on Fabric, and its `gradle.properties` reads:
+
+| Key | Jade | Here | Note |
+|---|---|---|---|
+| `loader_version` | `0.19.3` | `0.19.3` | independent confirmation of the bump below |
+| `minecraft_version` | `26.2` | `26.2` | — |
+| `fabric_api_version` | `0.152.1+26.2` | `0.157.0+26.2` | ours is newer and resolves in CI; theirs is simply older |
+| `loom_version` | `1.16-SNAPSHOT` | `1.17` | see below |
+| Loom plugin id | `net.fabricmc.fabric-loom` | same | confirms the new plugin id, not the legacy one |
+
+**On Loom, the two sources disagree.** Fabric's 26.2 announcement names 1.17; a
+mod shipping against 26.2 is on `1.16-SNAPSHOT`. Both are above the `1.15.5` this
+build was using, so the bump is right either way. `1.17` is pinned here because
+the vendor's own guidance for this Minecraft version is the stronger source, and
+because a floating `-SNAPSHOT` is not a pin. If it fails to resolve, `1.16` is the
+evidenced fallback rather than a guess.
+
 ## 26.1-era tooling under a 26.2 target
 
 The toolchain rows above were originally taken from Fabric's **26.1**
