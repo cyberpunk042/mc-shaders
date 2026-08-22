@@ -9,6 +9,8 @@ import net.cyberpunk042.mcshaders.core.binding.BindingRegistry;
 import net.cyberpunk042.mcshaders.core.binding.DimensionBinding;
 import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectRegistry;
+import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
+import net.cyberpunk042.mcshaders.core.schema.SchemaRegistry;
 
 /**
  * The entry point for other mods.
@@ -61,6 +63,7 @@ public final class McShadersAPI {
 
     private static final EffectRegistry EFFECTS = new EffectRegistry();
     private static final BackendRegistry BACKENDS = new BackendRegistry();
+    private static final SchemaRegistry SCHEMAS = new SchemaRegistry();
     private static final List<DimensionBinding> PENDING_BINDINGS = new ArrayList<>();
 
     private static volatile boolean registrationClosed;
@@ -88,6 +91,24 @@ public final class McShadersAPI {
      *
      * @throws IllegalStateException if registration has closed, or the id is taken
      */
+    /**
+     * Declares that an effect type is editable, and what its controls are.
+     *
+     * <p>Optional, and independent of {@link #registerEffect}: an effect may be
+     * registered without a schema and simply not appear in an editor. Registering a
+     * schema for a type nothing ever registers is allowed too — a schema is a
+     * description, and nothing here requires the thing it describes to exist yet.
+     *
+     * @param effectType the type this describes, matching an
+     *                   {@link EffectDefinition#type()}
+     * @param schema     what is tunable on it
+     * @throws IllegalStateException if registration has closed, or the type already
+     *                               has a schema
+     */
+    public static void registerSchema(String effectType, EffectSchema schema) {
+        SCHEMAS.register(effectType, schema);
+    }
+
     public static void registerBackend(BackendFactory factory) {
         BACKENDS.register(factory);
     }
@@ -131,6 +152,17 @@ public final class McShadersAPI {
     }
 
     /**
+     * The schemas that say which effects can be edited, and how.
+     *
+     * <p>Separate from {@link #effects()} because being editable is optional: an
+     * effect with nothing worth tuning declares no schema and simply does not appear
+     * in an editor.
+     */
+    public static SchemaRegistry schemas() {
+        return SCHEMAS;
+    }
+
+    /**
      * Closes registration and publishes the accumulated bindings.
      *
      * <p>Called by this mod at the end of the loader's initialisation phase.
@@ -145,6 +177,7 @@ public final class McShadersAPI {
             registrationClosed = true;
             EFFECTS.freeze();
             BACKENDS.freeze();
+            SCHEMAS.freeze();
             McShaders.setRegistry(BindingRegistry.of(List.copyOf(PENDING_BINDINGS)));
         }
     }

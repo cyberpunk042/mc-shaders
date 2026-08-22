@@ -1,13 +1,16 @@
 package net.cyberpunk042.mcshaders.fabric.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import java.util.function.Supplier;
+import java.util.List;
 import net.cyberpunk042.mcshaders.McShaders;
+import net.cyberpunk042.mcshaders.McShadersAPI;
 import net.cyberpunk042.mcshaders.core.edit.EditSession;
+import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -18,9 +21,10 @@ import net.minecraft.resources.Identifier;
  * by default: a mod claiming a key the player did not ask for is a nuisance, and an
  * unbound mapping still appears in the controls list to be given one.
  *
- * <p>What the key opens is whatever {@link #editing} was last handed. Until an effect
- * is selected there is nothing to edit and the key does nothing — deliberately, rather
- * than opening an empty screen that looks broken.
+ * <p>What it opens comes from {@link McShadersAPI#schemas()} — the effects that
+ * declared themselves editable. One of them opens straight into its editor; several
+ * open a list first; none at all shows a screen saying so, rather than a key that
+ * appears to do nothing, which is indistinguishable from a key that is broken.
  */
 public final class EditorKey {
 
@@ -37,7 +41,6 @@ public final class EditorKey {
     private static final int UNBOUND = -1;
 
     private static KeyMapping mapping;
-    private static Supplier<EditSession> editing = () -> null;
 
     private EditorKey() {
     }
@@ -58,19 +61,6 @@ public final class EditorKey {
         ClientTickEvents.END_CLIENT_TICK.register(EditorKey::onTick);
     }
 
-    /**
-     * Sets what the key opens.
-     *
-     * <p>A supplier rather than a session, because what is being edited changes as the
-     * player selects effects, and the key should open whatever is current when it is
-     * pressed rather than whatever was current when it was registered.
-     *
-     * @param supplier returns the sitting to edit, or null when there is nothing to edit
-     */
-    public static void editing(Supplier<EditSession> supplier) {
-        editing = supplier == null ? () -> null : supplier;
-    }
-
     private static void onTick(Minecraft minecraft) {
         if (mapping == null) {
             return;
@@ -84,9 +74,23 @@ public final class EditorKey {
         if (!pressed || minecraft.gui.screen() != null) {
             return;
         }
-        EditSession session = editing.get();
-        if (session != null) {
-            minecraft.gui.setScreen(new SchemaScreen(null, session));
+        minecraft.gui.setScreen(openingScreen());
+    }
+
+    /**
+     * The screen the key opens, given what is registered.
+     *
+     * <p>Read at press time rather than at registration: schemas are contributed during
+     * mod initialisation, which has not finished when the key is registered.
+     */
+    private static Screen openingScreen() {
+        List<EffectSchema> schemas = McShadersAPI.schemas().all();
+        if (schemas.isEmpty()) {
+            return new NothingToEditScreen();
         }
+        if (schemas.size() == 1) {
+            return new SchemaScreen(null, EditSession.of(schemas.get(0)));
+        }
+        return new EffectPickerScreen(schemas);
     }
 }
