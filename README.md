@@ -124,6 +124,10 @@ reading real numbers from the wrong places. Neither produces an error anywhere.
 cd check && ../gradlew run --args="/path/to/assets"
 ```
 
+Released versions publish a runnable distribution to GitHub Packages as
+`net.cyberpunk042:mcshaders-check`, so using it does not mean cloning this
+repository.
+
 It walks every `post_effect/*.json` under that directory and reports missing
 shaders, unresolved includes, targets read before they are written, targets
 nothing reads, inputs whose sampler the shader does not declare, and uniform

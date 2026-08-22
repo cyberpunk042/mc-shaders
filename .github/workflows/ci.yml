@@ -167,7 +167,7 @@ jobs:
   publish:
     name: Publish to GitHub Packages
     if: github.event_name == 'release'
-    needs: [core, common, loaders]
+    needs: [core, check, common, loaders]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -193,6 +193,16 @@ jobs:
 
       - name: Publish API
         run: ./gradlew :common:publish --configure-on-demand --console=plain
+        env:
+          GITHUB_ACTOR: ${{ github.actor }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The checker is a tool people are meant to run, not just a library. It
+      # publishes a runnable distribution alongside the jar so obtaining it does
+      # not mean cloning this repository.
+      - name: Publish the checker
+        working-directory: check
+        run: ../gradlew publish --console=plain
         env:
           GITHUB_ACTOR: ${{ github.actor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
