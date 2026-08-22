@@ -164,6 +164,31 @@ public record PrimitiveLink(
     // Builder
     // =========================================================================
     
+    /**
+     * Starts a link to {@code target}.
+     *
+     * <p>The named factories above cover one constraint each — {@link #radiusMatch},
+     * {@link #mirror}, {@link #orbitSync} and the rest. This is for the cases that
+     * combine several, which the factories cannot express:
+     *
+     * <pre>
+     * PrimitiveLink.builder("core")
+     *         .radiusMatch(true).radiusOffset(0.5f)
+     *         .colorMatch(true)
+     *         .build();
+     * </pre>
+     *
+     * <p>{@code Builder} was reachable before this only through
+     * {@link #toBuilder()} on an existing link, which meant building one from nothing
+     * started by making a link you did not want.
+     *
+     * @param target the id of the primitive to link to
+     * @return a builder with the target set and every constraint off
+     */
+    public static Builder builder(String target) {
+        return new Builder().target(target);
+    }
+
     public Builder toBuilder() {
         return new Builder()
             .target(target)

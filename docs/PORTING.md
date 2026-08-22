@@ -4,6 +4,10 @@
 of shapes and links, and a live customiser UI. The plan is to extract the reusable
 engine into mc-shaders, leaving that mod as a consumer.
 
+> The current state of the shaders being ported — what the checker finds in
+> `the-virus-block-mc`'s tree, and which of it is a real defect — is in
+> [VIRUS-BLOCK-SHADER-STATE.md](VIRUS-BLOCK-SHADER-STATE.md).
+
 This file records the decisions that shape the extraction, so nobody has to
 re-derive them — least of all the licensing one.
 
@@ -440,9 +444,25 @@ Worth stating plainly, because it changes what "port this across" can mean:
 
 Every `net.minecraft` name in the mod is a **Yarn** name, and Yarn stopped being
 maintained from 26.1 onward because Mojang's own names are now in the jar. So the
-mod's Minecraft-facing code cannot cross by recompiling — the identifiers
-themselves differ. `MinecraftClient`, `Identifier`, `DrawContext`, `Screen` and the
-rest are Yarn spellings of classes that 26.2 calls something else.
+mod's Minecraft-facing code cannot cross by recompiling.
+
+**But not uniformly, and the exceptions are the dangerous part.** Read against a
+Fabric mod shipping on 26.2 ([`Snownee/Jade`](https://github.com/Snownee/Jade/tree/26.2-fabric)):
+
+| Yarn, in the mod | 26.2, in a mod that builds | |
+|---|---|---|
+| `net.minecraft.client.MinecraftClient` | `net.minecraft.client.Minecraft` | renamed |
+| `net.minecraft.client.font.TextRenderer` | `net.minecraft.client.gui.Font` | renamed and moved |
+| `net.minecraft.text.Text` | `net.minecraft.network.chat.Component` | renamed and moved |
+| `net.minecraft.util.Identifier` | `net.minecraft.resources.Identifier` | **same class name, different package** |
+| `net.minecraft.item.ItemStack` | `net.minecraft.world.item.ItemStack` | same name, different package |
+
+An earlier draft of this section said the identifiers "differ", full stop. That is
+wrong in the way that costs the most time: `Identifier` and `ItemStack` keep their
+names and move package, so a blind find-and-replace on class names leaves imports
+that look right, resolve to nothing, and give an error naming a class that plainly
+exists. Assume every name changed *or* every name survived and you are wrong
+either way — each one has to be looked up.
 
 That is roughly 40,000 lines of GUI and several thousand of render code which are
 not portable as written, on top of being coupled to Minecraft at all.

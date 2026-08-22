@@ -29,6 +29,10 @@ import net.cyberpunk042.mcshaders.core.chain.PostChain;
 import net.cyberpunk042.mcshaders.core.glsl.IncludeResolver;
 import net.cyberpunk042.mcshaders.core.glsl.ResolvedShader;
 import net.cyberpunk042.mcshaders.core.glsl.SourceProvider;
+import net.cyberpunk042.mcshaders.core.mesh.Mesh;
+import net.cyberpunk042.mcshaders.core.mesh.Tessellator;
+import net.cyberpunk042.mcshaders.core.shape.CylinderShape;
+import net.cyberpunk042.mcshaders.core.shape.SphereShape;
 import net.cyberpunk042.mcshaders.core.layout.GlslBlocks;
 import net.cyberpunk042.mcshaders.core.layout.GlslType;
 import net.cyberpunk042.mcshaders.core.layout.LayoutComparison;
@@ -328,5 +332,41 @@ class LibraryDocExampleTest {
         int before = session.historyDepth();
         assertTrue(!session.set("core.size", new ParamValue.Scalar(0.9)));
         assertEquals(before, session.historyDepth());
+    }
+
+    // ── docs: Turning a shape into geometry ────────────────────────────────────
+
+    @Test
+    @DisplayName("the geometry example tessellates, and detail is inert exactly as documented")
+    void geometryExample() {
+        Mesh mesh = Tessellator.tessellate(SphereShape.of(1.0f), 0);
+
+        assertTrue(mesh.vertexCount() > 0, "the documented call produced no geometry");
+        assertTrue(mesh.indices().length > 0, "the documented call produced no indices");
+        for (int index : mesh.indices()) {
+            assertTrue(index >= 0 && index < mesh.vertexCount(),
+                    "an index addresses a vertex that does not exist: " + index);
+        }
+
+        // forEachTriangle is what the doc shows; check it visits every primitive
+        // rather than silently doing nothing.
+        int[] visited = {0};
+        mesh.forEachTriangle((a, b, c) -> visited[0]++);
+        assertEquals(mesh.primitiveCount(), visited[0],
+                "forEachTriangle visited " + visited[0] + " of " + mesh.primitiveCount()
+                        + " primitives");
+
+        // "Resolution comes from the shape, not from the detail argument."
+        CylinderShape coarse = CylinderShape.of(1.0f, 2.0f);
+        CylinderShape fine = new CylinderShape(1.0f, 2.0f, 128,
+                coarse.topRadius(), coarse.heightSegments(),
+                coarse.capTop(), coarse.capBottom(), coarse.arc());
+
+        assertEquals(Tessellator.tessellate(coarse, 0).vertexCount(),
+                Tessellator.tessellate(coarse, 128).vertexCount(),
+                "detail stopped being inert — the doc says it is");
+        assertTrue(Tessellator.tessellate(fine, 0).vertexCount()
+                        > Tessellator.tessellate(coarse, 0).vertexCount(),
+                "raising the shape's own segment count did not produce a finer mesh");
     }
 }

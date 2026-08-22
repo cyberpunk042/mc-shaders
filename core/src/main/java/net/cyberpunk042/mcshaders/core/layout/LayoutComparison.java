@@ -65,7 +65,12 @@ public final class LayoutComparison {
         List<Integer> offsets = new ArrayList<>(new TreeSet<>(
                 Stream.concat(want.keySet().stream(), have.keySet().stream()).toList()));
 
+        int resumeAt = Integer.MIN_VALUE;
         for (int offset : offsets) {
+            if (offset < resumeAt) {
+                // Inside a divergent run already reported. Its members are one event.
+                continue;
+            }
             Std140.Placement w = want.get(offset);
             Std140.Placement h = have.get(offset);
 
@@ -78,7 +83,7 @@ public final class LayoutComparison {
                 out.add(new LayoutMismatch(LayoutMismatch.Kind.UNWRITTEN, LayoutMismatch.Severity.ERROR,
                         offset, describe(w), null,
                         toTheEnd && unwritten > 1
-                                ? "the shader reads " + unwritten + " member(s) from here on and nothing"
+                                ? "the shader reads " + unwritten + " scalar slot(s) from here on and nothing"
                                         + " writes them, starting with '" + w.name() + "'; they hold"
                                         + " whatever the buffer happened to contain"
                                 : "the shader reads '" + w.name() + "' here and nothing writes it; it"
@@ -110,30 +115,106 @@ public final class LayoutComparison {
                                 + " is ignored"));
             } else if (tailAgrees(want, have, offsets, offset)) {
                 out.add(mismatch(LayoutMismatch.Kind.RENAMED_MEMBER, LayoutMismatch.Severity.WARNING, w, h,
-                        "same offset and type under a different name, and the rest still lines up —"
+                        "same offset and type under a different name, and the rest still lines up:"
                                 + " a rename on one side only"));
             } else {
+                int realign = realignsAt(want, have, offsets, offset);
                 out.add(mismatch(LayoutMismatch.Kind.DIVERGENT_MEMBER, LayoutMismatch.Severity.ERROR, w, h,
-                        "the declarations part company here, so this member and every one after it"
-                                + " is read from the wrong place"));
-                // Every later offset is a consequence of this one; listing them is noise.
-                break;
+                        realign < 0
+                                ? "the declarations part company here and never line up again, so this"
+                                        + " member and every one after it is read from the wrong place"
+                                : "the declarations disagree from here until byte " + realign
+                                        + " (" + countBetween(offsets, offset, realign) + " scalar slot(s))"
+                                        + " and line up again from there, so the damage is bounded to"
+                                        + " those"));
+                if (realign < 0) {
+                    // One side gained a member the other has not, so every later offset is
+                    // shifted and reporting each is noise. Nothing further can be trusted.
+                    break;
+                }
+                // A bounded run is a local swap, not a shift. Skip its members — they are
+                // one event — and carry on, because what follows is independent and used
+                // to be lost entirely: in the shaders this was written against, breaking
+                // here hid a second two-slot swap 112 bytes later and 26 reserved slots
+                // the host legitimately writes camera data into.
+                resumeAt = realign;
+                continue;
             }
         }
 
-        if (out.isEmpty() && expected.sizeInBytes() != actual.sizeInBytes()) {
+        // A size difference is only worth its own finding when nothing above already
+        // described it. UNWRITTEN and TRUNCATED both mean "the host stopped early", and
+        // saying that twice is not more evidence.
+        //
+        // What this must not do is stay silent after a DIVERGENT_MEMBER. That branch
+        // stops reading members at the first disagreement, so without this the ends are
+        // never compared — and a shader whose block is 928 bytes against a host writing
+        // 672 reports one divergence in the middle and nothing at all about the 256
+        // bytes past the end. That was the behaviour before: out.isEmpty() meant any
+        // error at all suppressed the check that mattered most.
+        boolean tailAlreadyReported = out.stream().anyMatch(m ->
+                m.kind() == LayoutMismatch.Kind.UNWRITTEN
+                        || m.kind() == LayoutMismatch.Kind.TRUNCATED);
+        if (!tailAlreadyReported && expected.sizeInBytes() != actual.sizeInBytes()) {
+            int shortfall = expected.sizeInBytes() - actual.sizeInBytes();
             out.add(new LayoutMismatch(LayoutMismatch.Kind.SIZE_MISMATCH,
-                    LayoutMismatch.Severity.WARNING, expected.sizeInBytes(),
+                    shortfall > 0 ? LayoutMismatch.Severity.ERROR : LayoutMismatch.Severity.WARNING,
+                    Math.min(expected.sizeInBytes(), actual.sizeInBytes()),
                     expected.sizeInBytes() + " bytes", actual.sizeInBytes() + " bytes",
-                    "every member agrees but the blocks are different sizes"));
+                    shortfall > 0
+                            ? "the shader's block is " + expected.sizeInBytes() + " bytes and the host"
+                                    + " writes " + actual.sizeInBytes() + "; the last " + shortfall
+                                    + " bytes hold whatever the buffer contained"
+                            : "the host writes " + actual.sizeInBytes() + " bytes into a block the"
+                                    + " shader declares as " + expected.sizeInBytes() + "; the extra "
+                                    + (-shortfall) + " are never read"));
         }
         return List.copyOf(out);
     }
 
+    /**
+     * Every scalar the block occupies, keyed by the byte it starts at.
+     *
+     * <p>Comparing declarations member-for-member only works while both sides spell
+     * things the same way, and content formats give authors no choice about that.
+     * Minecraft's post-effect JSON has no matrix type and no vector type: a {@code mat4}
+     * has to be written as sixteen consecutive floats. Against a shader declaring
+     * {@code vec4[4]}, a member-level comparison sees {@code vec4} against {@code float}
+     * at the same offset and calls it a type error, then calls the twelve floats sitting
+     * inside those vectors writes nobody reads. Both sides are describing the same
+     * sixty-four bytes.
+     *
+     * <p>So the comparison happens at the level std140 actually binds at. A {@code vec4}
+     * at 528 becomes four floats at 528, 532, 536 and 540, and sixteen floats written by
+     * the host land on exactly those, and the two agree. A genuine disagreement —
+     * {@code int} where the shader reads {@code float}, or a member the other side does
+     * not have — still lands on a scalar and is still reported.
+     *
+     * <p>Each scalar keeps the name of the member it came from, unsuffixed, so findings
+     * still say {@code CameraX} rather than an offset alone — and, more importantly, so
+     * that a name which means something goes on meaning something. Suffixing them was
+     * tried and was wrong: {@link #isExpandedElement} treats a bracketed name as carrying
+     * no information, because the author of the other side never chose it, and marking
+     * every scalar that way made {@code Radius} and {@code Inserted} agree at byte 0.
+     * A genuine shift went unreported. The only names that should be ignorable are the
+     * ones {@link Std140#expand} generated for array and matrix elements, which is what
+     * it already did.
+     */
     private static Map<Integer, Std140.Placement> byOffset(UniformBlock block) {
         Map<Integer, Std140.Placement> out = new LinkedHashMap<>();
         for (Std140.Placement p : Std140.place(Std140.expand(block.members()))) {
-            out.put(p.offset(), p);
+            GlslType.Components parts = p.type().components();
+            if (parts.count() == 1) {
+                out.put(p.offset(), p);
+                continue;
+            }
+            int stride = parts.scalar().size();
+            for (int i = 0; i < parts.count(); i++) {
+                out.put(p.offset() + i * stride,
+                        new Std140.Placement(
+                                new Std140.Member(p.name(), parts.scalar(), 1),
+                                p.offset() + i * stride));
+            }
         }
         return out;
     }
@@ -169,6 +250,54 @@ public final class LayoutComparison {
         String lower = name.toLowerCase(Locale.ROOT);
         return lower.startsWith("reserved") || lower.startsWith("padding")
                 || lower.startsWith("unused") || lower.startsWith("_pad");
+    }
+
+    /**
+     * The offset from which the two declarations agree again, or -1 if they never do.
+     *
+     * <p>A divergence is usually reported as poisoning everything after it, and often it
+     * does — one side gaining a member shifts every later one. But two declarations can
+     * also disagree over a couple of slots and then line up again, which is what happens
+     * when someone replaces two fields with two others of the same size. Saying "every
+     * member after this is wrong" there sends the reader to audit forty members when two
+     * are at fault.
+     *
+     * <p>This answers where <em>this</em> run ends, not where all disagreement ends. A
+     * block can hold several independent swaps, and treating the first as running to the
+     * last would merge them into one finding and hide everything between. Later runs get
+     * their own findings when the comparison resumes.
+     *
+     * <p>Offsets only one side has do not end a run: one declaration outliving the other
+     * is what {@link LayoutMismatch.Kind#UNWRITTEN} and
+     * {@link LayoutMismatch.Kind#SIZE_MISMATCH} are for. Without that, a block that both
+     * diverges in the middle and is truncated at the end reports the divergence as
+     * unbounded, which is the shape the real shaders turned out to have.
+     */
+    private static int realignsAt(Map<Integer, Std140.Placement> want,
+                                  Map<Integer, Std140.Placement> have,
+                                  List<Integer> offsets, int from) {
+        for (int offset : offsets) {
+            if (offset <= from) {
+                continue;
+            }
+            if (agreeAt(want, have, offset)) {
+                return offset;
+            }
+        }
+        return -1;
+    }
+
+    /** Whether both sides describe the same member at {@code offset}. */
+    private static boolean agreeAt(Map<Integer, Std140.Placement> want,
+                                   Map<Integer, Std140.Placement> have, int offset) {
+        Std140.Placement w = want.get(offset);
+        Std140.Placement h = have.get(offset);
+        return w != null && h != null && w.type() == h.type() && namesAgree(w, h);
+    }
+
+    /** How many offsets fall in {@code [from, to)}. */
+    private static long countBetween(List<Integer> offsets, int from, int to) {
+        return offsets.stream().filter(o -> o >= from && o < to).count();
     }
 
     /** Whether every offset after {@code from} holds the same thing on both sides. */

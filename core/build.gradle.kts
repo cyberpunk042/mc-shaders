@@ -58,7 +58,21 @@ tasks.javadoc {
     // No `links(...)` to an external JDK javadoc: it makes the build reach the
     // network at build time, so an unreachable docs host fails the build for a
     // purely cosmetic cross-link.
-    (options as StandardJavadocDocletOptions).addStringOption("Xdoclint:none", "-quiet")
+    //
+    // doclint runs for `reference` and `html`, as errors. Those are the two groups
+    // that catch documentation which is wrong rather than merely thin: a {@link} to
+    // a method that no longer exists, and a bare `<` that silently swallows the rest
+    // of a sentence as an unclosed tag. Porting 13,000 lines in from another repo
+    // brought eighteen of exactly those across, and nothing in the build would have
+    // failed on the nineteenth.
+    //
+    // `missing` is deliberately not enabled: an undocumented parameter is a gap, not
+    // a defect, and failing on it would make the gate noisy enough that someone
+    // would switch the whole thing off.
+    (options as StandardJavadocDocletOptions).apply {
+        addStringOption("Xdoclint:reference,html", "-quiet")
+        addBooleanOption("Werror", true)
+    }
 }
 
 publishing {

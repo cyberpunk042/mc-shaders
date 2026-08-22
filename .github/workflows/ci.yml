@@ -36,9 +36,15 @@ jobs:
 
       # The core is a separate build, so it runs from its own directory using the
       # repository's single pinned wrapper.
-      - name: Test
+      #
+      # `build` rather than `test`, because the core publishes a javadoc jar and
+      # therefore has to produce javadoc that compiles. Its doclint gate is set to
+      # fail on a {@link} that resolves to nothing or malformed HTML — see
+      # core/build.gradle.kts — and running only `test` would leave that gate wired
+      # to nothing. `build` runs the tests too.
+      - name: Build, test and document
         working-directory: core
-        run: ../gradlew test --console=plain
+        run: ../gradlew build --console=plain
 
       - name: Upload test results
         if: always()
