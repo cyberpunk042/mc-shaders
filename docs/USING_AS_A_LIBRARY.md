@@ -323,6 +323,38 @@ worth knowing:
 - **Coercion happens before that test**, so two different sets that clamp to the
   same value are one edit, not two.
 
+## Asking what a dimension looks like
+
+Contributing a binding is one half; reading back what the dimension actually became
+is the other. Several mods and any number of datapacks can speak about the same
+dimension, so the answer is rarely just what you registered.
+
+```java
+McShadersAPI.bindings();          // every binding in force, after registration closes
+McShadersAPI.look(worldState);    // the stack that would be drawn here, merged and ordered
+```
+
+`look` is a read. It advances no transition and disturbs no frame, so it is safe
+from a command, a HUD, or another mod's logic. Merging is by layer id in ascending
+priority — the same stack the renderer resolves — so a high-priority binding that
+redefines one layer leaves the rest intact.
+
+### Replacing everything, as a reload does
+
+```java
+McShadersAPI.reloadBindings(registry);   // wholesale; reaches the running pipeline
+```
+
+This is deliberately allowed **after** registration closes, which is what separates
+it from `registerBinding`. Registration is a startup accumulation, closed once so
+mods cannot race each other. A reload is a runtime replacement — and refusing it
+after close would mean `/reload` could never change anything.
+
+It is wholesale rather than a merge: a reload's result is the complete new set, and
+merging would leave bindings from a pack the player has just removed. Passing
+`null` means empty, which is what a reload that found no binding files legitimately
+produces.
+
 ## Keeping what was edited
 
 A session is a sitting, not storage. When it goes out of scope so do its values,
