@@ -39,6 +39,12 @@ dependencies {
     include("net.cyberpunk042:mcshaders-core:$coreVersion")
 }
 
+// The mod's datapack, authored once at the repository root and shipped by both
+// loaders. It cannot live in `common`: that is bundled as a jar-in-jar library,
+// and a library is not loaded as a mod, so its data/ is never read as a datapack.
+// See datapack/README.md.
+sourceSets["main"].resources.srcDir(rootProject.file("datapack"))
+
 apply(from = rootProject.file("gradle/verify-jar-contents.gradle.kts"))
 
 loom {
