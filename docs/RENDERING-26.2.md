@@ -10,6 +10,11 @@ cross-checked against Fabric's 26.2 announcement and the vanilla assets at
 [26.1.2](https://github.com/InventivetalentDev/minecraft-assets/tree/26.1.2).
 Everything below is quoted or paraphrased from those; nothing is from memory.
 
+**Second source.** [`Snownee/Jade`](https://github.com/Snownee/Jade/tree/26.2-fabric)
+at `26.2.11` — a mod that actually compiles on 26.2. Every signature attributed to
+it below was read out of its source, not remembered, and the GUI ones have since
+been compiled against the real API in CI.
+
 ## Why this document exists
 
 `common/`, `fabric/` and `neoforge/` contain five files with **zero**
@@ -96,7 +101,10 @@ in that JSON, `TargetSpec` is where it goes.
 Full-screen post-processing passes do not need any of it. Worth knowing before
 someone reaches for the familiar idiom.
 
-## The Fabric hook points, which are still not established
+## The post-effect chain hook points, which are still not established
+
+> Renamed from "The Fabric hook points" once the fog hook below turned out to be
+> established. The chain is the part that is not.
 
 The primer is a NeoForge document, so how a *Fabric* mod attaches to the
 post-processing chain is not in it. That was researched separately and the honest
@@ -139,7 +147,74 @@ So the GUI surface an editing screen would need is readable after all, from a mo
 that compiles against it. What is still missing is a 26.2 mod doing
 *post-processing* — Jade does not, so the chain hook points remain unestablished.
 
-That is where M2 starts, and it starts with reading rather than typing.
+## The fog hook, which is established
+
+The section above was written as though Jade gave nothing toward M2. It gave one
+thing, and the roadmap makes it the important one: **M2's acceptance criterion is
+"a hardcoded fog binding visibly changes the frame in-game"**, and Jade mixins
+`FogRenderer`.
+
+Read from `snownee/jade/mixin/FogRendererMixin.java` on the `26.2-fabric` branch,
+tag `26.2.11`:
+
+| Fact | Value |
+|---|---|
+| Package | `net.minecraft.client.renderer.fog` — fog has its own package now |
+| Class | `FogRenderer` |
+| Method | `setupFog(Camera, int, DeltaTracker, float, ClientLevel)` |
+| Returns | `org.joml.Vector4f` — the fog colour |
+| Carrier | `FogData`, a **local variable** inside `setupFog`, not a parameter |
+| Fields read | `FogData#renderDistanceStart`, `FogData#renderDistanceEnd` |
+
+Two details that a signature copied from memory would have got wrong. The package
+is new: `net.minecraft.client.renderer.fog.FogRenderer`, not the
+`net.minecraft.client.renderer.FogRenderer` the 1.21.x sources show. And `FogData`
+is a **local**, which is why Jade reaches it with MixinExtras'
+`@Local(name = "fog")` rather than an argument capture — anything wanting to
+*change* fog rather than read it has to capture that local, or modify the returned
+`Vector4f`.
+
+Its fields are read from another package without an accessor, so they are public.
+Jade only reads them; whether writing to them at `TAIL` actually affects the frame
+is **not** established by this, and cannot be until it is run.
+
+### Two more signatures, incidentally
+
+From `JadeClient.java` and `overlay/RayTracing.java` in the same checkout — worth
+recording because the M2 `WorldState` sampler needs exactly this kind of access:
+
+- `Minecraft#gameRenderer` is still a field, and `GameRenderer#mainCamera()` still
+  returns `Camera`.
+- `GameRenderer#gameRenderState()` exists and carries `lightmapRenderState`, which
+  has `darknessEffectScale`. This is the primer's render-state extraction change
+  showing up in a real call site.
+- `Minecraft#getDeltaTracker()` → `DeltaTracker#getGameTimeDeltaPartialTick(boolean)`
+  is how partial tick is obtained.
+
+### And one corroboration of the version table
+
+Jade's `gradle.properties` pins `loader_version=0.19.3`, which is exactly what
+[VERSIONS.md](VERSIONS.md) pins for `mc_26_2_fabric_loader`. Its Fabric API is
+`0.152.1+26.2` against our `0.157.0+26.2`; both are valid 26.2 builds and ours is
+the newer, so this corroborates the loader pin without contradicting the API pin.
+
+## What M2 still needs before it can start typing
+
+Established now: the fog entry point, camera and render-state access, partial tick.
+
+Still not established: the post-processing **chain** — `PostChain`, `PostEffectPass`
+or whatever 26.2 calls them, and where a mod attaches its own passes. Jade does not
+touch them, so this still needs either the 26.2 sources or a 26.2 mod that does
+post-processing.
+
+That means M2 splits cleanly, and the fog half is the half that is unblocked:
+
+1. **A fog binding through `FogRenderer#setupFog`** — signature known, no chain
+   needed, and it is what the milestone's done-when actually asks for.
+2. **The full post-effect chain** — still blocked on reading.
+
+Reading is what moved (1) from blocked to unblocked. Nothing here has been run, so
+none of it is proven to *work* — only proven to exist, in Mojang naming, on 26.2.
 
 ## The GUI API, read out of Jade rather than remembered
 
