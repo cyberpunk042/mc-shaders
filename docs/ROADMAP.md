@@ -160,6 +160,13 @@ to a consumer — and it was ours. The store's first consumer is the screen itse
 reopening, which is what makes the round trip observable rather than aspirational;
 a renderer is the second, and reads `TuningStore.effective`.
 
+**The editor is no longer empty.** `BuiltinEffects` registers `mcshaders:fog` —
+chosen because it is the one effect whose entry point has been read out of a mod
+that compiles on 26.2, and because M2's done-when is a fog binding. `CoronaEffect`
+and `HorizonEffect` were deliberately left out: both are geometry effects with no
+established hook, and they would have filled the editor without connecting it to
+anything.
+
 **Not done by this:** the screens compile and are wired correctly, which is not the
 same as their looking right. That needs someone to open them. And the mod registers
 no effects of its own yet, so on a fresh install the empty-state screen is the

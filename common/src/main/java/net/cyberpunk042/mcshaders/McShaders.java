@@ -47,6 +47,9 @@ public final class McShaders {
         }
         initialised = true;
         log = logger == null ? message -> { } : logger;
+        // Before any third party registers, so a mod that wants to see what is
+        // already present can, and so the built-ins cannot lose a name race.
+        BuiltinEffects.register();
         log.accept(MOD_NAME + " common init — API " + McShadersAPI.API_VERSION);
     }
 
@@ -74,8 +77,11 @@ public final class McShaders {
         EffectBackend selected = McShadersAPI.backends().select(reason -> log.accept("  " + reason));
         backend = selected;
 
+        // Not "third-party": the built-ins live in the same registry, so that
+        // wording became wrong the moment BuiltinEffects.register() was added.
         log.accept(MOD_NAME + " ready — backend '" + selected.id()
-                + "', " + McShadersAPI.effects().size() + " third-party effect type(s), "
+                + "', " + McShadersAPI.effects().size() + " effect type(s), "
+                + McShadersAPI.schemas().all().size() + " editable, "
                 + registry.size() + " binding(s)");
     }
 
