@@ -141,6 +141,49 @@ that compiles against it. What is still missing is a 26.2 mod doing
 
 That is where M2 starts, and it starts with reading rather than typing.
 
+## The GUI API, read out of Jade rather than remembered
+
+Jade's `src/main/java/snownee/jade/gui/` is several real screens compiled against
+26.2. Reading them settles what an editing screen needs, and three of the answers
+are changes that writing from 1.21 memory would have got wrong — each one a
+compile error at best, and at worst code that looks right and overrides nothing.
+
+| From 1.21 | In 26.2 | How it was established |
+|---|---|---|
+| `Screen#render(GuiGraphics, int, int, float)` | **`Screen#extractRenderState(GuiGraphicsExtractor, int, int, float)`** | `BaseOptionsScreen` declares it `@Override` and calls `super`, so it is the superclass's method |
+| `Screen#keyPressed(int, int, int)` | **`Screen#keyPressed(KeyEvent)`**, with `keyEvent.key()` for the code | `BaseOptionsScreen:237`, `@Override` |
+| `Minecraft#setScreen(Screen)` | **`minecraft.gui.setScreen(Screen)`** | every call site in Jade goes through `.gui` |
+
+The first is the one that matters. 26.2 has moved GUI drawing to an
+extract-render-state model — the same shift the primer describes for the level
+renderer, applied to screens — so a `render` override written from memory would
+compile as a new method that nothing calls, and the screen would come out blank
+with no error anywhere.
+
+What has *not* changed, and can be relied on:
+
+- `Screen(Component title)` as the super constructor, `protected void init()` as
+  the place to build the screen.
+- `addRenderableWidget(w)` adds a widget and returns it.
+- `Button.builder(Component, onPress).bounds(x, y, w, h).build()`.
+- `AbstractSliderButton(x, y, width, height, Component, double value01)` with
+  `protected void updateMessage()` and `protected void applyValue()` — the value
+  is normalised 0–1, and the subclass maps it to its own range.
+- `EditBox(font, x, y, width, height, Component)`.
+- `CycleButton.builder(nameProvider, initial).withValues(values)`.
+- `Component.translatable(key)` and `Component.literal(text)`.
+- `onClose()`, `shouldCloseOnEsc()`, `removed()`.
+
+**Jade never overrides a render method on a screen at all.** Its screens are
+assembled from widgets in `init()`, and `extractRenderState` is used only for
+tooltips. That is worth copying rather than merely noting: a screen built entirely
+from widgets does not touch the one part of this API that changed most, so it is
+the shape least likely to be wrong.
+
+These are read from source, not compiled. They are strong evidence and not yet
+proof; the build is what turns them into proof, and CI compiles the loader modules
+against real 26.2.
+
 ## Cross-references
 
 - [ROADMAP.md](ROADMAP.md) M2, M5

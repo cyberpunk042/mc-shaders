@@ -1,6 +1,7 @@
 package net.cyberpunk042.mcshaders.fabric;
 
 import net.cyberpunk042.mcshaders.McShaders;
+import net.cyberpunk042.mcshaders.fabric.gui.EditorKey;
 import net.fabricmc.api.ClientModInitializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -8,10 +9,13 @@ import org.slf4j.LoggerFactory;
 /**
  * Fabric client entrypoint.
  *
- * <p>Backend selection and the per-frame render hook belong here. Both are
- * deliberately absent from this first commit: wiring them means calling into
- * Minecraft's 26.2 render internals, and the exact API surface has not been
- * verified against the real sources yet. See docs/ROADMAP.md, milestone M2.
+ * <p>Backend selection and the per-frame render hook still belong here and are still
+ * absent: wiring them means calling into Minecraft's 26.2 post-processing internals,
+ * and unlike the GUI surface those have not been established against a mod that
+ * compiles on this version. See docs/RENDERING-26.2.md and ROADMAP.md milestone M2.
+ *
+ * <p>What is wired is the editing screen's key. The GUI API it needs <em>was</em>
+ * established from source, which is why that half could go in.
  */
 public final class McShadersFabricClient implements ClientModInitializer {
 
@@ -20,5 +24,6 @@ public final class McShadersFabricClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
         LOGGER.info("{} client init — backend: {}", McShaders.MOD_NAME, McShaders.backend().id());
+        EditorKey.register();
     }
 }
