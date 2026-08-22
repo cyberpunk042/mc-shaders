@@ -1,0 +1,251 @@
+package net.cyberpunk042.mcshaders.fabric.gui;
+
+import java.util.List;
+import java.util.Locale;
+import net.cyberpunk042.mcshaders.core.edit.EditSession;
+import net.cyberpunk042.mcshaders.core.param.ParamValue;
+import net.cyberpunk042.mcshaders.core.schema.Bounds;
+import net.cyberpunk042.mcshaders.core.schema.ControlKind;
+import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
+import net.cyberpunk042.mcshaders.core.schema.SliderScale;
+import net.minecraft.client.gui.components.AbstractSliderButton;
+import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.components.StringWidget;
+import net.minecraft.client.gui.screens.Screen;
+import net.minecraft.network.chat.Component;
+
+/**
+ * An editing screen built from an effect's schema.
+ *
+ * <p>Nothing here knows what any particular effect is. An
+ * {@link net.cyberpunk042.mcshaders.core.schema.EffectSchema} says what is tunable —
+ * groups of {@link ParamSpec}, each with a {@link ControlKind} and a range — and this
+ * turns that into widgets and writes what the widgets do back into an
+ * {@link EditSession}. Add a parameter to a schema and its control appears; there is
+ * nothing to keep in step by hand.
+ *
+ * <h2>Why it is shaped this way</h2>
+ *
+ * <p>Two constraints shaped this more than taste did.
+ *
+ * <p><b>It overrides no render method.</b> 26.2 replaced
+ * {@code Screen#render(GuiGraphics, …)} with
+ * {@code extractRenderState(GuiGraphicsExtractor, …)}, so a {@code render} override
+ * written from memory of an earlier version compiles as a new method nothing calls —
+ * the screen comes out blank and no error is raised anywhere. A screen assembled from
+ * widgets in {@link #init()} never touches the part of the API that changed. That is
+ * how the 26.2 mod this API was read out of does it too.
+ *
+ * <p><b>It uses only widgets and calls that were read from that mod's source</b>, not
+ * remembered. {@code CycleButton} would be the natural control for a toggle and for a
+ * choice; it is not used here because the specific builder methods needed
+ * ({@code onOffBuilder}, {@code withInitialValue}) appear nowhere in the source that
+ * could confirm them, and this cannot be run locally to find out. Both are plain
+ * {@link Button}s that change their own label instead — a control that certainly
+ * works, rather than a nicer one that might not. See docs/RENDERING-26.2.md.
+ *
+ * <p>Everything with arithmetic in it lives in {@code core} and is tested:
+ * {@link SliderScale} for the 0–1 conversion, {@link EditSession} for coercion and
+ * undo. What is left here is assembly — which CI can check by compiling, and a person
+ * has to check by looking at it.
+ *
+ * <h2>What is deliberately unfinished</h2>
+ *
+ * <p>{@link ControlKind#COLOR} and {@link ControlKind#VECTOR} show their value and are
+ * not editable. A colour wants a picker and a vector wants three linked sliders;
+ * neither exists in vanilla, and inventing one against an API that cannot be run here
+ * is how the blank screen above happens. They are shown rather than skipped so a
+ * schema using them displays something instead of a gap.
+ */
+public final class SchemaScreen extends Screen {
+
+    private static final int ROW_HEIGHT = 24;
+    private static final int CONTROL_WIDTH = 200;
+    private static final int LABEL_WIDTH = 140;
+    private static final int TOP_MARGIN = 32;
+    private static final int WIDGET_HEIGHT = 20;
+    private static final int FOOTER_BUTTON_WIDTH = 70;
+    private static final int FOOTER_GAP = 4;
+
+    private final EditSession session;
+    private final Screen parent;
+
+    /**
+     * @param parent  the screen to return to on close; null closes to the game
+     * @param session the sitting this screen edits — its schema decides the controls
+     */
+    public SchemaScreen(Screen parent, EditSession session) {
+        super(Component.literal(session.schema().displayName()));
+        this.parent = parent;
+        this.session = session;
+    }
+
+    @Override
+    protected void init() {
+        super.init();
+
+        int left = (width - LABEL_WIDTH - CONTROL_WIDTH) / 2;
+        int y = TOP_MARGIN;
+
+        for (String groupName : session.schema().groupNames()) {
+            addLabel(Component.literal(groupName), left, y);
+            y += ROW_HEIGHT;
+
+            for (ParamSpec spec : session.schema().group(groupName)) {
+                addLabel(Component.literal(spec.label()), left, y);
+                addControl(spec, left + LABEL_WIDTH, y);
+                y += ROW_HEIGHT;
+            }
+        }
+
+        addFooter();
+    }
+
+    /**
+     * A text label at a position.
+     *
+     * <p>{@code StringWidget} sizes itself from its text and is placed afterwards; it
+     * has no constructor taking a position.
+     */
+    private void addLabel(Component text, int x, int y) {
+        StringWidget label = new StringWidget(text, font);
+        label.setPosition(x, y);
+        addRenderableWidget(label);
+    }
+
+    /** Builds the one widget that edits {@code spec}, by its control kind. */
+    private void addControl(ParamSpec spec, int x, int y) {
+        switch (spec.control()) {
+            case SLIDER, INT_SLIDER ->
+                    addRenderableWidget(new ParamSlider(x, y, spec));
+            case TOGGLE ->
+                    addRenderableWidget(toggleButton(spec, x, y));
+            case CHOICE ->
+                    addRenderableWidget(choiceButton(spec, x, y));
+            // Shown, not editable — see the class documentation.
+            case COLOR, VECTOR, LABEL ->
+                    addLabel(Component.literal(shownValue(spec)), x, y);
+        }
+    }
+
+    /** A button that flips a flag and relabels itself. */
+    private Button toggleButton(ParamSpec spec, int x, int y) {
+        return Button.builder(Component.literal(onOff(flagOf(spec))), button -> {
+            boolean next = !flagOf(spec);
+            session.set(spec.key(), new ParamValue.Flag(next));
+            button.setMessage(Component.literal(onOff(next)));
+        }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
+    }
+
+    /** A button that advances through a spec's choices and relabels itself. */
+    private Button choiceButton(ParamSpec spec, int x, int y) {
+        List<String> choices = spec.choices();
+        String initial = currentChoice(spec, choices);
+
+        return Button.builder(Component.literal(initial), button -> {
+            if (choices.isEmpty()) {
+                return;
+            }
+            int next = (choices.indexOf(currentChoice(spec, choices)) + 1) % choices.size();
+            String value = choices.get(next);
+            session.set(spec.key(), new ParamValue.Text(value));
+            button.setMessage(Component.literal(value));
+        }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
+    }
+
+    private void addFooter() {
+        int footerY = height - 28;
+        int total = FOOTER_BUTTON_WIDTH * 4 + FOOTER_GAP * 3;
+        int x = (width - total) / 2;
+
+        x = addFooterButton("Undo", x, footerY, session::undo);
+        x = addFooterButton("Redo", x, footerY, session::redo);
+        x = addFooterButton("Reset", x, footerY, session::resetAll);
+        addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
+                .bounds(x, footerY, FOOTER_BUTTON_WIDTH, WIDGET_HEIGHT).build());
+    }
+
+    /**
+     * A footer button that changes the session and then rebuilds the screen.
+     *
+     * <p>Undo, redo and reset can each move any number of parameters at once, and every
+     * widget holds its own copy of the value it was built with. Rebuilding is what makes
+     * the controls show what the session now holds; without it the values change
+     * underneath and the screen goes on displaying the old ones.
+     *
+     * @return the x for the next button
+     */
+    private int addFooterButton(String text, int x, int y, Runnable change) {
+        addRenderableWidget(Button.builder(Component.literal(text), button -> {
+            change.run();
+            rebuildWidgets();
+        }).bounds(x, y, FOOTER_BUTTON_WIDTH, WIDGET_HEIGHT).build());
+        return x + FOOTER_BUTTON_WIDTH + FOOTER_GAP;
+    }
+
+    @Override
+    public void onClose() {
+        if (minecraft != null) {
+            minecraft.gui.setScreen(parent);
+        }
+    }
+
+    private static String onOff(boolean value) {
+        return value ? "On" : "Off";
+    }
+
+    private boolean flagOf(ParamSpec spec) {
+        return session.get(spec.key()).orElse(null) instanceof ParamValue.Flag flag && flag.value();
+    }
+
+    private String currentChoice(ParamSpec spec, List<String> choices) {
+        String held = session.get(spec.key()).orElse(null) instanceof ParamValue.Text text
+                ? text.value() : null;
+        if (held != null && choices.contains(held)) {
+            return held;
+        }
+        return choices.isEmpty() ? "" : choices.get(0);
+    }
+
+    private String shownValue(ParamSpec spec) {
+        return session.get(spec.key()).map(Object::toString).orElse("-");
+    }
+
+    /** A vanilla slider driven by a {@link ParamSpec}'s range. */
+    private final class ParamSlider extends AbstractSliderButton {
+
+        private final ParamSpec spec;
+
+        private ParamSlider(int x, int y, ParamSpec spec) {
+            super(x, y, CONTROL_WIDTH, WIDGET_HEIGHT, Component.empty(),
+                    SliderScale.toPosition(spec.bounds(), heldValue(spec)));
+            this.spec = spec;
+            updateMessage();
+        }
+
+        @Override
+        protected void updateMessage() {
+            double shown = SliderScale.toValue(spec.bounds(), value);
+            setMessage(Component.literal(format(shown) + spec.bounds().unitIfAny().orElse("")));
+        }
+
+        @Override
+        protected void applyValue() {
+            session.set(spec.key(),
+                    new ParamValue.Scalar(SliderScale.toValue(spec.bounds(), value)));
+        }
+
+        private String format(double shown) {
+            Bounds bounds = spec.bounds();
+            boolean whole = spec.control() == ControlKind.INT_SLIDER
+                    || (!bounds.isContinuous() && bounds.step() >= 1);
+            return whole ? String.valueOf(Math.round(shown))
+                    : String.format(Locale.ROOT, "%.2f", shown);
+        }
+    }
+
+    private double heldValue(ParamSpec spec) {
+        return session.get(spec.key()).orElse(null) instanceof ParamValue.Scalar scalar
+                ? scalar.value() : spec.bounds().min();
+    }
+}
