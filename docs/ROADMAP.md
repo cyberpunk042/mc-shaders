@@ -160,6 +160,13 @@ to a consumer — and it was ours. The store's first consumer is the screen itse
 reopening, which is what makes the round trip observable rather than aspirational;
 a renderer is the second, and reads `TuningStore.effective`.
 
+**The editor is no longer empty.** `BuiltinEffects` registers `mcshaders:fog` —
+chosen because it is the one effect whose entry point has been read out of a mod
+that compiles on 26.2, and because M2's done-when is a fog binding. `CoronaEffect`
+and `HorizonEffect` were deliberately left out: both are geometry effects with no
+established hook, and they would have filled the editor without connecting it to
+anything.
+
 **Not done by this:** the screens compile and are wired correctly, which is not the
 same as their looking right. That needs someone to open them. And the mod registers
 no effects of its own yet, so on a fresh install the empty-state screen is the
@@ -195,10 +202,26 @@ for the API not matching expectations.
 
 Make it authorable without Java.
 
-- Codecs for `EffectLayer`, `EffectStack`, `Condition`, `DimensionBinding`
-- Datapack loading from `data/<ns>/mcshaders/bindings/*.json`
-- Reload handling — build a fresh registry, swap atomically, ease into it
-- Pack-facing validation errors that name the file and the field
+- ~~Codecs for `EffectLayer`, `EffectStack`, `Condition`, `DimensionBinding`~~ —
+  **done**: `common.codec.BindingCodec`, both directions, with pack-facing errors
+  that name the file and the path (`nether.json at stack.layers[2].params.dir[1]`).
+  It lives in `common` rather than `core` for the same reason the shader checker's
+  codec does: the engine models bindings, it does not parse them, so the published
+  library carries no JSON dependency. 22 tests, and `common` had none before this
+- The 26.2 reload API is confirmed — see [DATAPACKS-26.2.md](DATAPACKS-26.2.md).
+  It also settles which listener to use: `SimpleJsonResourceReloadListener` is
+  generic over a DFU codec on 26.2, which does not compose with our gson codec, so
+  M3 uses the plain `ResourceManagerReloadListener` and feeds `BindingLoader`
+- Datapack loading from `data/<ns>/mcshaders/bindings/*.json` — **half done**:
+  `BindingLoader` turns a set of files into a registry, skipping the broken ones
+  rather than blanking every dimension over one typo, and reporting what it
+  skipped and what overrode what. Handing it the files is the part that still
+  needs Minecraft's resource manager
+- Reload handling — build a fresh registry, swap atomically, ease into it.
+  `McShaders.setRegistry` is the swap and `Transition` is the easing; what is
+  missing is the reload event that calls them
+- ~~Pack-facing validation errors that name the file and the field~~ — **done**:
+  `nether.json at stack.layers[2].params.dir[1]: expected a number, found a string`
 
 **Done when:** a dimension's look can be changed by editing JSON and running
 `/reload`, with no restart.
