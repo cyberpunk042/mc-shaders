@@ -4,6 +4,10 @@
 of shapes and links, and a live customiser UI. The plan is to extract the reusable
 engine into mc-shaders, leaving that mod as a consumer.
 
+> The current state of the shaders being ported — what the checker finds in
+> `the-virus-block-mc`'s tree, and which of it is a real defect — is in
+> [VIRUS-BLOCK-SHADER-STATE.md](VIRUS-BLOCK-SHADER-STATE.md).
+
 This file records the decisions that shape the extraction, so nobody has to
 re-derive them — least of all the licensing one.
 

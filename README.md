@@ -194,6 +194,13 @@ written up in VERSIONS.md.
 
 See [docs/ROADMAP.md](docs/ROADMAP.md).
 
+The effects being ported from `the-virus-block-mc` have been run through the checker;
+what it found — four chains naming archived shaders, one uniform block that thirteen
+chains share and disagree with, and several hosts that stopped being extended when their
+shader was — is written up in
+[docs/VIRUS-BLOCK-SHADER-STATE.md](docs/VIRUS-BLOCK-SHADER-STATE.md), along with the
+things in that report that look alarming and are correct by design.
+
 ## License
 
 MIT — see [LICENSE](LICENSE).
