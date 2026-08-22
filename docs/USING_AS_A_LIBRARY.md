@@ -365,6 +365,40 @@ cylinder, polyhedron and molecule. A shape it does not recognise yields
 unfamiliar shape should get nothing drawn, not a thrown frame. The rest of the
 tessellators — rays, jets, capsules, cones, tori — are called directly.
 
+### Grouping primitives into a layer
+
+A `Primitive` is one shape with its own configuration. A `FieldLayer` is what makes
+several of them one thing — move the layer and they all move, fade it and they all fade,
+and links resolve within it, so a layer is the scope in which "take your radius from
+that one" means anything.
+
+```java
+FieldLayer layer = FieldLayer.builder("aura")
+        .primitives(core, innerRing, outerRing)   // declaration order matters
+        .transform(Transform.IDENTITY)
+        .alpha(0.8f)
+        .blendMode(BlendMode.ADD)
+        .build();
+
+layer.isDrawable();          // visible, not transparent, not empty
+layer.primitive("core");     // Optional<Primitive>
+```
+
+Order is not cosmetic: links may only point backwards, so a layer that reordered its
+contents would turn valid content into forward references. The list is copied on the way
+in and unmodifiable on the way out, for the same reason.
+
+`BlendMode` here is the same enum the effect layers use. It is one set of compositing
+operations, and two enums whose constants mean the same arithmetic is the kind of
+duplicate declaration that drifts apart. Content written against the field system's older
+spelling maps `NORMAL` onto `ALPHA`.
+
+**A layer holds; it does not render, and it does not resolve.** Turning one into geometry
+is the sequence above — build the index, resolve, apply, tessellate — and there is
+deliberately no single call that does it, because the apply step for a radius means
+choosing what "set the radius" means per shape type. That is a decision about how content
+behaves, not a gap in the plumbing.
+
 ### Links resolve to values; applying them is yours
 
 A `PrimitiveLink` is a constraint, not a drawn wire: *take your radius from that one,
