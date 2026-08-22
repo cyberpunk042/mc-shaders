@@ -215,7 +215,9 @@ counting slots calls it what it is.
 
 ### Findings against the corpus
 
-92 block declarations across 21 pipelines; 64 agree. The errors:
+92 block declarations across 21 pipelines; 64 agree. These are disagreements
+between the pipeline JSON and the GLSL — see *Which pair of declarations was
+compared*, below, for what that does and does not cause at runtime. The errors:
 
 | Block | Where it breaks | What it means |
 |---|---|---|
@@ -237,11 +239,22 @@ follow from that, and both matter before acting on it:
   so from slot 1 onward there is nothing to match against. Structure agrees;
   whether slot *n* means the same thing on both sides cannot be established
   without reading each type's use, or running it.
-- `PostEffectPassMixin` builds and substitutes its own buffer rather than filling
-  the one the pipeline JSON declares, so the JSON's byte total is not necessarily
-  what the GPU sees. That does not make the divergence harmless — the JSON is
-  still one of three declarations of one layout, and it disagrees with the other
-  two — but it does mean the short-buffer reading is unproven.
+- **The JSON's layout is overwritten before the pass draws, so the drift is
+  latent rather than active.** `PostEffectPassMixin` injects at `render` HEAD and,
+  for each of `FieldVisualConfig`, `MagicCircleConfig`, `ShockwaveConfig`,
+  `VirusBlockParams` and the base UBOs, builds a buffer sized from the *Java
+  record* and `put`s it into `uniformBuffers`, replacing whatever the pipeline
+  declared. The JSON's role for these blocks is to create the map key at all —
+  each updater begins `if (!uniformBuffers.containsKey(...)) return;` — not to
+  determine the layout.
+
+  So at runtime the bytes come from the record, which agrees structurally with the
+  GLSL. The divergence is a genuine defect, and a trap for anyone who later
+  removes or bypasses the mixin, but it is not what makes a frame look wrong.
+
+  The one path where it does reach the GPU is narrow and worth naming: if the
+  pass's field lookup returns null the updater returns *before* substituting, and
+  that draw uses the pipeline-declared buffer — the short, divergent one.
 
 Settling it needs either the record's members expanded and compared, or the
 thing no static check can do: running it.
