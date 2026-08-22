@@ -10,6 +10,7 @@ import net.cyberpunk042.mcshaders.core.binding.DimensionBinding;
 import net.cyberpunk042.mcshaders.core.effect.EffectDefinition;
 import net.cyberpunk042.mcshaders.core.effect.EffectRegistry;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
+import net.cyberpunk042.mcshaders.core.edit.TuningStore;
 import net.cyberpunk042.mcshaders.core.schema.SchemaRegistry;
 
 /**
@@ -64,6 +65,7 @@ public final class McShadersAPI {
     private static final EffectRegistry EFFECTS = new EffectRegistry();
     private static final BackendRegistry BACKENDS = new BackendRegistry();
     private static final SchemaRegistry SCHEMAS = new SchemaRegistry();
+    private static final TuningStore TUNING = new TuningStore();
     private static final List<DimensionBinding> PENDING_BINDINGS = new ArrayList<>();
 
     private static volatile boolean registrationClosed;
@@ -160,6 +162,22 @@ public final class McShadersAPI {
      */
     public static SchemaRegistry schemas() {
         return SCHEMAS;
+    }
+
+    /**
+     * The values effects have actually been tuned to.
+     *
+     * <p>Unlike every registry beside it this is not lifecycled, and deliberately so:
+     * a registry accumulates during initialisation and freezes, whereas tuning is what
+     * changes while the game runs. It is safe to read from the render path at any time
+     * because it is concurrent and the values in it are immutable.
+     *
+     * <p>A renderer wants {@link TuningStore#effective}, which falls back to the
+     * schema's defaults for effects nobody has touched, rather than {@code get}, which
+     * distinguishes untouched from tuned-back-to-default.
+     */
+    public static TuningStore tuning() {
+        return TUNING;
     }
 
     /**

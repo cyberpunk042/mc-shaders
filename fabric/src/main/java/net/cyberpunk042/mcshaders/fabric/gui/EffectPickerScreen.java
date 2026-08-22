@@ -1,7 +1,7 @@
 package net.cyberpunk042.mcshaders.fabric.gui;
 
 import java.util.List;
-import net.cyberpunk042.mcshaders.core.edit.EditSession;
+import net.cyberpunk042.mcshaders.McShadersAPI;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.StringWidget;
@@ -58,13 +58,16 @@ public final class EffectPickerScreen extends Screen {
     /**
      * Opens the editor for one effect, with this screen as its parent.
      *
-     * <p>A fresh {@link EditSession} each time, so closing the editor and reopening it
-     * starts from the schema's defaults rather than from a half-finished sitting whose
-     * undo history reaches back into a previous visit.
+     * <p>A fresh session each time, so its undo history does not reach back into a
+     * previous visit — but one built by the tuning store, so it starts from the values
+     * that visit left behind. Those are two separate things, and an earlier version of
+     * this method conflated them: it took a session from the schema's defaults and
+     * described the lost tuning as though it were the point.
      */
     private void open(EffectSchema schema) {
         if (minecraft != null) {
-            minecraft.gui.setScreen(new SchemaScreen(this, EditSession.of(schema)));
+            minecraft.gui.setScreen(new SchemaScreen(
+                    this, McShadersAPI.tuning().sessionFor(schema), McShadersAPI.tuning()));
         }
     }
 

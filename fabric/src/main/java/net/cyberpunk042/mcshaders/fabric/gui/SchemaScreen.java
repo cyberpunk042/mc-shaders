@@ -3,6 +3,7 @@ package net.cyberpunk042.mcshaders.fabric.gui;
 import java.util.List;
 import java.util.Locale;
 import net.cyberpunk042.mcshaders.core.edit.EditSession;
+import net.cyberpunk042.mcshaders.core.edit.TuningStore;
 import net.cyberpunk042.mcshaders.core.param.ParamValue;
 import net.cyberpunk042.mcshaders.core.schema.Bounds;
 import net.cyberpunk042.mcshaders.core.schema.ControlKind;
@@ -68,16 +69,33 @@ public final class SchemaScreen extends Screen {
     private static final int FOOTER_GAP = 4;
 
     private final EditSession session;
+    private final TuningStore store;
     private final Screen parent;
 
     /**
      * @param parent  the screen to return to on close; null closes to the game
      * @param session the sitting this screen edits — its schema decides the controls
+     * @param store   where the results go, so that closing the screen does not discard
+     *                them and reopening it does not start again from the defaults
      */
-    public SchemaScreen(Screen parent, EditSession session) {
+    public SchemaScreen(Screen parent, EditSession session, TuningStore store) {
         super(Component.literal(session.schema().displayName()));
         this.parent = parent;
         this.session = session;
+        this.store = store;
+    }
+
+    /**
+     * Sends the session's values to the store.
+     *
+     * <p>Called after every change rather than once on close, for two reasons. A
+     * renderer reading the store sees the value move while the slider moves, which is
+     * the point of tuning a shader from a screen. And closing is not the only way a
+     * screen goes away — the game can be quit, the connection can drop — so an editor
+     * that only commits on close is an editor that loses work.
+     */
+    private void publish() {
+        store.commit(session);
     }
 
     @Override
@@ -133,6 +151,7 @@ public final class SchemaScreen extends Screen {
         return Button.builder(Component.literal(onOff(flagOf(spec))), button -> {
             boolean next = !flagOf(spec);
             session.set(spec.key(), new ParamValue.Flag(next));
+            publish();
             button.setMessage(Component.literal(onOff(next)));
         }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
     }
@@ -149,6 +168,7 @@ public final class SchemaScreen extends Screen {
             int next = (choices.indexOf(currentChoice(spec, choices)) + 1) % choices.size();
             String value = choices.get(next);
             session.set(spec.key(), new ParamValue.Text(value));
+            publish();
             button.setMessage(Component.literal(value));
         }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
     }
@@ -178,6 +198,7 @@ public final class SchemaScreen extends Screen {
     private int addFooterButton(String text, int x, int y, Runnable change) {
         addRenderableWidget(Button.builder(Component.literal(text), button -> {
             change.run();
+            publish();
             rebuildWidgets();
         }).bounds(x, y, FOOTER_BUTTON_WIDTH, WIDGET_HEIGHT).build());
         return x + FOOTER_BUTTON_WIDTH + FOOTER_GAP;
@@ -233,6 +254,7 @@ public final class SchemaScreen extends Screen {
         protected void applyValue() {
             session.set(spec.key(),
                     new ParamValue.Scalar(SliderScale.toValue(spec.bounds(), value)));
+            publish();
         }
 
         private String format(double shown) {
