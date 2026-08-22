@@ -242,3 +242,55 @@ follow from that, and both matter before acting on it:
 
 Settling it needs either the record's members expanded and compared, or the
 thing no static check can do: running it.
+
+
+## The chain around the layout check
+
+`core.layout` answers one question about one block. `core.chain` is the thing
+that asks it, along with everything else that can be settled from text.
+
+A `PostChain` is targets plus passes in order — the concrete, authored form of a
+post-processing effect, below `EffectGraph`'s backend-neutral description. Core
+models and checks it without owning it, which is the whole engine/content split
+working as intended: the checker is MIT, the shaders it reads stay under their
+own terms, and no content is copied to make the check possible.
+
+`ChainValidator` reports:
+
+| Check | Why it needs the chain, not just a pass |
+|---|---|
+| shader resolves | — |
+| includes resolve | a missing include is reported as such, not as a missing shader; and nothing further is read out of a shader whose includes failed, because the flattened source is a guess |
+| input target is declared or host-supplied | — |
+| output target is declared or host-supplied | — |
+| target read before written | invisible from inside either pass |
+| target declared and never read | ditto |
+| bound inputs match declared samplers | the `In` → `InSampler` suffix is convention neither side states; it lives in `Input.declaredSampler()` rather than being open-coded at each comparison |
+| uniform block layouts agree | delegates to `core.layout` |
+
+What is left for a GPU is whether the GLSL compiles. That is worth knowing and
+is not usually what is wrong.
+
+### The corpus, end to end
+
+21 pipelines. One — `shockwave_glow` — is sound. The rest:
+
+| Pipelines | Error |
+|---|---|
+| `depth_test`, `depth_full`, `depth_passthrough`, `depth_redtint` | their fragment shader is gone: `post/depth_*.fsh` moved to `_archive/`, and the pipeline JSON was never updated |
+| 16 `field_visual_*` | `FieldVisualConfig` diverges at byte 264 |
+| `magic_circle` | `MagicCircleConfig` diverges at byte 56 |
+| `shockwave_ring` | `ShockwaveConfig` truncated at byte 144 — 40 members unwritten |
+| `virus_block` | `VirusBlockParams` truncated at byte 288 — 31 unwritten |
+
+The four `depth_*` are worth separating from the rest. `DepthTestShader` is live
+— reachable by keybind and from the GUI, with two mixins behind it — but
+`loadPostEffect` throws on the missing shader, the throw is caught and logged,
+and the call returns null. So all four modes are wired up and do nothing, quietly.
+That is the same shape of failure as the layout drift, one level up: the
+information needed to notice was there all along, and nothing was looking.
+
+Vanilla shader ids (`minecraft:post/blit`, `minecraft:post/sobel`) resolve
+through the resource manager in game. A checker pointed at a mod's asset tree
+alone will not find them, which is a property of the provider it is given, not of
+the chain.
