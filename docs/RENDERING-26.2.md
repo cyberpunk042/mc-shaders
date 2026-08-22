@@ -96,12 +96,38 @@ in that JSON, `TargetSpec` is where it goes.
 Full-screen post-processing passes do not need any of it. Worth knowing before
 someone reaches for the familiar idiom.
 
-## What this does not cover
+## The Fabric hook points, which are still not established
 
-The primer is a NeoForge document. Fabric-specific entry points — how a mod hooks
-the post-processing chain, what `ShaderLoader` looks like now — are not in it, and
-are **not established here**. That research belongs with the first M2 commit, not
-this one.
+The primer is a NeoForge document, so how a *Fabric* mod attaches to the
+post-processing chain is not in it. That was researched separately and the honest
+result is: **not established**, for a reason worth recording.
+
+What is established:
+
+- Fabric has no dedicated post-processing API. Mods mixin, and the usual targets
+  are `GameRenderer` and `LevelRenderer` — which is what `the-virus-block-mc`
+  does, injecting at `PostEffectPass#render`.
+- Those targets moved in 26.2. Per the primer, `LevelRenderer#renderLevel` →
+  `render`, the constructor changed significantly, and a new `LevelExtractor`
+  took over render-state extraction. Any injection point picked from memory is
+  aiming at a signature that no longer exists.
+
+What is not, and the trap in the way of getting it:
+
+Searching for this returns Yarn javadoc — `PostEffectProcessor` in
+`net.minecraft.client.gl`, `WorldRendererMixin` injecting into
+`WorldRenderer.render()`. All of it is **1.21.x**, and all of it is in **Yarn
+naming**, which 26.x does not use. `WorldRenderer` is Yarn's name for what Mojang
+calls `LevelRenderer`; the primer's use of `LevelRenderer` is the tell that it is
+quoting official names.
+
+So the readily-available documentation for this is doubly wrong for this project:
+wrong version, wrong mapping. Copying a signature out of it would compile against
+nothing and waste a CI round-trip apiece. Establishing the real entry points needs
+the 26.2 sources open — which the build environment cannot reach — or a Fabric mod
+doing post-processing on 26.2 to read, which the search did not surface.
+
+That is where M2 starts, and it starts with reading rather than typing.
 
 ## Cross-references
 
