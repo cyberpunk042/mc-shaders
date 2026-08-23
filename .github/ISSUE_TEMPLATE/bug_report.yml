@@ -1,0 +1,54 @@
+name: Bug report
+description: Something behaves differently from what the documentation says
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Before filing: much of this mod **compiles against the real 26.2 API but has
+        never been observed running** — the render path, the datapack reload and the
+        editor screens especially. The status table in the README says which is which.
+        If you hit one of those, that is expected rather than a regression, and the
+        most useful report says what you saw the first time anyone ran it.
+
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened
+      description: What you saw, and what you expected instead.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: How to reproduce
+      description: >
+        Steps, and the binding JSON if a look is involved. A binding that reproduces it
+        is worth more than a description of one.
+      render: json
+    validations:
+      required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: Minecraft and loader
+      placeholder: "26.2, Fabric 0.19.4"
+    validations:
+      required: true
+
+  - type: input
+    id: mod-version
+    attributes:
+      label: Mod version
+      placeholder: "0.1.0, or a commit sha"
+    validations:
+      required: true
+
+  - type: textarea
+    id: log
+    attributes:
+      label: Log
+      description: The relevant part of `latest.log`. Paste the lines, not the whole file.
+      render: text

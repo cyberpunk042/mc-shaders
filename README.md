@@ -183,6 +183,10 @@ instead of reading one.
 
 ## License
 
+Contributions are welcome — [CONTRIBUTING.md](CONTRIBUTING.md) has the build commands,
+what a good change looks like here, and the one piece of 26.2 evidence that would
+unblock the most.
+
 MIT for the engine — see [LICENSE](LICENSE). Content ported from
 `the-virus-block-mc` carries its own terms; the split is recorded in
 [docs/PORTING.md](docs/PORTING.md).

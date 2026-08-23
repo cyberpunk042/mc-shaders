@@ -1,0 +1,39 @@
+name: 26.2 API evidence
+description: You know where 26.2 exposes something this project has not been able to verify
+labels: [api-evidence]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable issue you can open here. This project does not guess
+        at APIs, so a gap stays a gap until someone can point at a source that compiles
+        on the target version. Several parts are blocked on exactly that rather than on
+        effort — the post-processing chain runtime most of all.
+
+  - type: input
+    id: what
+    attributes:
+      label: What API
+      placeholder: "Running a post-processing chain / the Portal interface's package / ..."
+    validations:
+      required: true
+
+  - type: textarea
+    id: signature
+    attributes:
+      label: The signature
+      description: Fully qualified, as it appears on 26.2.
+      render: java
+    validations:
+      required: true
+
+  - type: textarea
+    id: source
+    attributes:
+      label: Where you read it
+      description: >
+        A mod that ships on 26.2 (with the ref), Mojang-mapped patch context, or vanilla
+        source. **Not** a memory of an earlier version — that is what this project is
+        trying to avoid. Say which version you saw it on.
+    validations:
+      required: true

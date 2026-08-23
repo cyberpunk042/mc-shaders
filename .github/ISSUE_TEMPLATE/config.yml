@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: How the datapack format works
+    url: https://github.com/cyberpunk042/mc-shaders/blob/main/docs/BINDINGS.md
+    about: Every field and all ten condition types, before filing a bug about one
+  - name: What is built and what is not
+    url: https://github.com/cyberpunk042/mc-shaders/blob/main/docs/SHADERS.md
+    about: Much of this compiles but has never been observed running — check here first

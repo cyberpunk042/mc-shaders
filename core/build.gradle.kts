@@ -47,6 +47,14 @@ tasks.test {
     testLogging {
         events("passed", "skipped", "failed")
     }
+
+    // PortedFileLicenceTest reads the sources as text, so its subject is the comments
+    // in them. Comments do not reach the class files, so without this the task stays
+    // up-to-date across exactly the edit it exists to catch: a ported file losing its
+    // relicence header re-runs nothing and the build stays green.
+    inputs.files(fileTree("src/main/java"))
+        .withPropertyName("mainSourcesAsText")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Javadoc is published because this is a library other people read against.
