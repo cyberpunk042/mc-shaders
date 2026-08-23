@@ -258,20 +258,48 @@ public final class McShadersAPI {
      * <strong>A caller that discards this has turned a loud failure into a silent
      * one.</strong> Log {@link BindingLoader.Result#problems()}.
      *
-     * <p>Applying is wholesale, exactly as {@link #reloadBindings} is, and for the
-     * same reason: a reload's files are the complete new set. Passing no files
-     * empties the registry, which is what removing the last pack should do.
+     * <p><strong>Packs are layered over the bindings mods registered in Java, not
+     * substituted for them.</strong> {@link #reloadBindings} replaces wholesale and
+     * says why; that reasoning is about <em>packs</em>, which a player can remove and
+     * which must therefore stop applying. It does not extend to bindings compiled
+     * into a mod. Those cannot be removed by a player, and — because
+     * {@link #registerBinding} throws once registration closes — a mod cannot put
+     * them back either. Replacing them wholesale would delete them permanently on the
+     * first {@code /reload}, including this mod's own.
+     *
+     * <p>So the pack set is applied <em>on top of</em> the registered set, and a pack
+     * binding whose id matches a registered one wins. That is the override a pack
+     * author is reaching for when they reuse an id, and it stays an override rather
+     * than becoming a deletion of everything else.
+     *
+     * <p>Passing no files therefore returns to the registered baseline rather than
+     * emptying the registry — which is what removing the last pack should do.
      *
      * @param files pack file contents, keyed by whatever name should appear in an
      *              error message — a path a pack author would recognise; null is
      *              read as empty
-     * @return what loaded, and everything that went wrong loading it
+     * @return what went wrong loading it, and the registry actually put in force —
+     *         the layered one, not the pack-only set, so a caller inspecting the
+     *         result sees what the renderer sees
      */
     @Experimental
     public static BindingLoader.Result loadBindings(Map<String, String> files) {
-        BindingLoader.Result result = BindingLoader.load(files == null ? Map.of() : files);
-        reloadBindings(result.registry());
-        return result;
+        BindingLoader.Result parsed = BindingLoader.load(files == null ? Map.of() : files);
+
+        // Close first, then read: completeRegistration is what makes PENDING_BINDINGS
+        // final, and reading it before that could miss a mod that had not initialised.
+        McShaders.completeRegistration();
+        List<DimensionBinding> layered;
+        synchronized (PENDING_BINDINGS) {
+            layered = new ArrayList<>(PENDING_BINDINGS);
+        }
+        // Registry.of lets a later entry replace an earlier one sharing an id, so
+        // appending the pack set here is exactly "packs override, registered persist".
+        layered.addAll(parsed.registry().all());
+
+        BindingRegistry inForce = BindingRegistry.of(layered);
+        reloadBindings(inForce);
+        return new BindingLoader.Result(inForce, parsed.problems());
     }
 
     /**
