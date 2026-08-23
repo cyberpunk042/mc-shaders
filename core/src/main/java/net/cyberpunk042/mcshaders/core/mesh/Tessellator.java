@@ -191,6 +191,34 @@ public interface Tessellator {
             
             // === MOLECULE ===
             case MoleculeShape molecule -> MoleculeTessellator.tessellate(molecule);
+
+            // The six below have working, separately tested tessellators and are
+            // registered names in ShapeRegistry, but were absent here — so creating one
+            // by name and tessellating it yielded an empty mesh and a log line. That is
+            // the failure the default branch below exists to report, and the worst place
+            // to meet it is through the documented front door.
+            //
+            // Each calls the same minimal overload the cases above use; passing no
+            // pattern is what those overloads already do internally.
+
+            // === CAPSULE ===
+            case CapsuleShape capsule -> CapsuleTessellator.tessellate(capsule);
+
+            // === CONE ===
+            case ConeShape cone -> ConeTessellator.tessellate(cone);
+
+            // === TORUS ===
+            case TorusShape torus -> TorusTessellator.tessellate(torus);
+
+            // === RAYS ===
+            case RaysShape rays -> RaysTessellator.tessellate(rays);
+
+            // === JET ===
+            case JetShape jet -> JetTessellator.tessellate(jet);
+
+            // === KAMEHAMEHA ===
+            case KamehamehaShape kamehameha -> KamehamehaTessellator.tessellate(kamehameha);
+
             default -> {
                 Diag.RENDER.topic("tessellate")
                     .reason("unknown shape type")
