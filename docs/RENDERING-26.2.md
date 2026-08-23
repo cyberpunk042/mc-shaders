@@ -440,3 +440,51 @@ proven by the same run.
 - [ROADMAP.md](ROADMAP.md) M2, M5
 - [VERSIONS.md](VERSIONS.md) — the toolchain pins and how each was verified
 - [PORTING.md](PORTING.md) — why the two projects target different versions
+
+## The NeoForge side, read from its 26.2 source
+
+Everything above was established against Fabric. NeoForge reaches the same two points
+by different means, and the pairing is closer than "nearest equivalent":
+
+| What | Fabric | NeoForge |
+|---|---|---|
+| Per-frame sample | `LevelExtractionEvents.END_EXTRACTION` | `ExtractLevelRenderStateEvent` |
+| Reach the frame's `FogData` | mixin at `FogRenderer#setupFog` TAIL | `ViewportEvent.RenderFog` → `getFogData()` |
+
+`ExtractLevelRenderStateEvent`'s own javadoc says it is *"fired when the LevelRenderer
+extracts level render state, **after all vanilla states have been extracted**"* — which
+is what `END_EXTRACTION` means — and it exposes `getLevel()`, `getCamera()`,
+`getDeltaTracker()` and `getRenderState()`. Those are the same four values Fabric's
+`LevelExtractionContext` provides, at the same types: in particular both hand back
+`net.minecraft.client.renderer.state.level.LevelRenderState`.
+
+That agreement is what lets `WorldSampler` be one method taking four vanilla
+arguments, in `vanilla/`, rather than a copy per loader.
+
+Both NeoForge events fire on **`NeoForge.EVENT_BUS`** — the game bus, per each event's
+javadoc — and are client-only. Subscribing on the mod bus produces no error and never
+runs, which is the failure mode worth naming.
+
+## Which `FogData` pair — the prior has moved
+
+`FogApply` still writes `renderDistanceStart`/`End`, and the reasoning for it is
+unchanged: vanilla sets that pair unconditionally, whereas `environmentalStart`/`End`
+is only written when a `FogEnvironment` applies, and ordinary air may have none.
+
+But NeoForge's `ViewportEvent.RenderFog` — the API its ecosystem has used to change
+fog for years — names its accessors over the *environmental* pair, verbatim from source:
+
+```java
+public float getNearPlaneDistance() { return fogData.environmentalStart; }
+public float getFarPlaneDistance()  { return fogData.environmentalEnd; }
+public void setNearPlaneDistance(float distance) { fogData.environmentalStart = distance; }
+```
+
+So the loader with the longest history of fog-modifying mods treats that pair as *the*
+fog-distance API. **That is a prior, not a proof** — it does not dispose of the
+argument above, and NeoForge also exposes `getFogData()` mutably, so its own users can
+write either pair; it simply names one.
+
+The practical consequence: if fog does not visibly change in game, swapping to the
+environmental pair is the first experiment, and because both loaders write through
+`FogApply` it is now one line in one file rather than two changes that could drift.
