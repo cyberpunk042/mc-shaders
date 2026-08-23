@@ -44,6 +44,12 @@ public sealed interface Condition {
 
         @Override
         public boolean test(WorldState state) {
+            if (!state.hasDayTime()) {
+                // The clock cannot be read on this version. False rather than a guess:
+                // a time-gated look that is reliably off is a thing an author can
+                // notice and ask about, and SamplingGaps names the binding for them.
+                return false;
+            }
             long t = state.dayTime();
             if (from <= to) {
                 return t >= from && t < to;

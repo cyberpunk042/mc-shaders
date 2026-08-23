@@ -28,6 +28,26 @@ public record WorldState(
     /** Length of a full Minecraft day in ticks. */
     public static final long DAY_LENGTH_TICKS = 24000L;
 
+    /**
+     * The time of day, when there is no way to read it.
+     *
+     * <p>A real state of the world rather than a placeholder: Minecraft 26.2 removed
+     * {@code Level#getDayTime()} and no client accessor for its replacement has been
+     * established, so a client-side sampler genuinely cannot answer the question.
+     *
+     * <p>Outside {@code [0, DAY_LENGTH_TICKS)} on purpose, and any negative reduces to
+     * it. Every time-gated condition is false against it, so such a look is reliably
+     * off rather than arbitrarily on — and something that quietly substituted a
+     * plausible hour would instead make it on for part of every day, which is far
+     * harder to notice and impossible to distinguish from a working clock.
+     */
+    public static final long UNKNOWN_DAY_TIME = -1L;
+
+    /** Whether this state's time of day is a reading rather than {@link #UNKNOWN_DAY_TIME}. */
+    public boolean hasDayTime() {
+        return dayTime >= 0;
+    }
+
     public WorldState {
         if (dimension == null) {
             throw new IllegalArgumentException("WorldState requires a dimension");
@@ -35,8 +55,14 @@ public record WorldState(
         weather = weather == null ? Weather.CLEAR : weather;
         biomeTags = biomeTags == null ? Set.of() : Set.copyOf(biomeTags);
         // Normalise into a single day so conditions never have to handle wrap-around
-        // from a world age that grows without bound.
-        dayTime = Math.floorMod(dayTime, DAY_LENGTH_TICKS);
+        // from a world age that grows without bound. Negatives are left alone: they
+        // are not times, they are UNKNOWN_DAY_TIME, and folding one into the day
+        // would turn "the clock cannot be read" into a specific late-night hour.
+        if (dayTime >= 0) {
+            dayTime = Math.floorMod(dayTime, DAY_LENGTH_TICKS);
+        } else {
+            dayTime = UNKNOWN_DAY_TIME;
+        }
     }
 
     /** A minimal state for the given dimension: noon, clear, at sea level. */

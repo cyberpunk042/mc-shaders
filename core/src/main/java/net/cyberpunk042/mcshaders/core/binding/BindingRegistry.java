@@ -76,6 +76,18 @@ public final class BindingRegistry {
         return bindings.isEmpty();
     }
 
+    /**
+     * Every binding, in the registry's own order.
+     *
+     * <p>{@link #forDimension} and {@link #active} answer "what applies here"; this
+     * answers "what exists at all", which is a different question and the one anything
+     * auditing the set has to ask. Without it a caller wanting to inspect the whole
+     * registry can only guess at dimensions and probe them one by one.
+     */
+    public List<DimensionBinding> all() {
+        return List.copyOf(bindings.values());
+    }
+
     /** All bindings targeting a dimension, regardless of condition, in priority order. */
     public List<DimensionBinding> forDimension(DimensionId dimension) {
         return sortedByPriority(bindings.values().stream()
