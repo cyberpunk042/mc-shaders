@@ -35,7 +35,7 @@ and is the right place to start.
 
 | | |
 |---|---|
-| The look model — layers, params, conditions, priority merge, easing | **Tested**, no Minecraft needed |
+| The look model — layers, params, conditions, priority merge, easing | **Tested**, no Minecraft needed — format reference in [docs/BINDINGS.md](docs/BINDINGS.md) |
 | Datapack loading and `/reload` | **Compile-verified**; never observed loading a file |
 | Fog reaching the frame | **Compile-verified**; never observed changing a pixel |
 | In-game editor (both loaders) | **Compiles**; screens never opened |
@@ -167,6 +167,7 @@ It cannot tell you whether the GLSL compiles. That needs a driver.
 | | |
 |---|---|
 | [SHADERS.md](docs/SHADERS.md) | **Start here.** What this does, in plain terms |
+| [BINDINGS.md](docs/BINDINGS.md) | The datapack format: every field, all ten condition types |
 | [USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md) | Consuming it from a mod or off-game |
 | [ROADMAP.md](docs/ROADMAP.md) | What is done, what is next, and what each milestone did *not* do |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout and data flow |

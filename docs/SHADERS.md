@@ -74,7 +74,8 @@ and its parameters. Nothing in it says *how* to draw — which is what lets the 
 render on whatever backend is available.
 
 **Conditions are declarative.** `y_range`, `weather`, `biome_tag`, `submerged`, combined
-with `all` / `any` / `not`. One caveat, stated because it will otherwise waste your
+with `all` / `any` / `not` — all ten types and the fields each one takes are in
+[BINDINGS.md](BINDINGS.md). One caveat, stated because it will otherwise waste your
 afternoon: **`time_of_day` cannot work on 26.2.** The day time is not readable from the
 client any more, so a binding gated on it silently never fires. The mod logs which of
 your bindings this affects at startup.
@@ -102,7 +103,7 @@ because part of it works today and the part that does not is the interesting one
 
 | You want to | Today |
 |---|---|
-| Author a **look** — fog, per dimension, on conditions | **Yes.** Datapack JSON, no code |
+| Author a **look** — fog, per dimension, on conditions | **Yes.** Datapack JSON, no code — format in [BINDINGS.md](BINDINGS.md) |
 | Declare a new **effect type** of your own | **Yes**, but a declaration draws nothing on its own |
 | Write a **backend** that draws your effect | **Yes.** You write the graphics code; the framework routes to it |
 | Hand the framework **your GLSL** and have it run it | **No.** Nothing here loads shader source at runtime |
@@ -202,7 +203,7 @@ dimension look should write. Both the choice and the argument against it are rec
 
 | You want to | Read |
 |---|---|
-| Author a look in a datapack | This page, plus `datapack/` in the repo for working examples |
+| Author a look in a datapack | **[BINDINGS.md](BINDINGS.md)** — every field, every condition type. This page for why; `datapack/` for working examples |
 | Use it from your own mod | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md) |
 | Write a backend that draws | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md#contributing-a-backend) — the contract, and what you receive per frame |
 | Know what is planned, in order | [ROADMAP.md](ROADMAP.md) |
