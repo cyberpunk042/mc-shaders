@@ -37,7 +37,7 @@ import org.slf4j.LoggerFactory;
  *
  * <h2>Scope, stated rather than implied</h2>
  *
- * <p>Bindings are datapack content — {@code data/&lt;ns&gt;/mcshaders/bindings/} — so
+ * <p>Bindings are datapack content — {@code data/<ns>/mcshaders/bindings/} — so
  * this listens on {@link PackType#SERVER_DATA}, and the registry it fills is a static
  * in this JVM. <strong>That is singleplayer and LAN, not a dedicated server.</strong>
  * On a dedicated server the reload runs server-side, where nothing renders, and the
@@ -53,7 +53,7 @@ public final class BindingReloadListener implements ResourceManagerReloadListene
 
     private static final Logger LOGGER = LoggerFactory.getLogger(McShaders.MOD_NAME);
 
-    /** Matches {@code data/&lt;namespace&gt;/mcshaders/bindings/&lt;name&gt;.json}. */
+    /** Matches {@code data/<namespace>/mcshaders/bindings/<name>.json}. */
     private static final String DIRECTORY = McShaders.MOD_ID + "/bindings";
 
     private static final FileToIdConverter LISTER = FileToIdConverter.json(DIRECTORY);
