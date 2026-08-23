@@ -204,6 +204,13 @@ Make it draw something.
   cannot yet be evaluated. A sampler must say so rather than quietly reporting noon
 - Backend selection with graceful fallback to `NoOpBackend`
 
+**Both loaders, as of the `vanilla/` module.** NeoForge has the render hook
+(`ExtractLevelRenderStateEvent`) and applies fog through `ViewportEvent.RenderFog`,
+which hands over the same `FogData` the Fabric mixin reaches. `WorldSampler` and
+`FogApply` are shared, so the two behave identically by construction rather than by
+being kept in step — which matters because *which* `FogData` pair to write is still
+open, and one in-game test should answer it for both.
+
 **Done when:** a hardcoded fog binding visibly changes the frame in-game.
 
 **Risk:** this is the milestone that touches Minecraft internals directly. Budget

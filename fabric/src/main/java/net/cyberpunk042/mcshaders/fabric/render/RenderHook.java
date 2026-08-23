@@ -3,6 +3,7 @@ package net.cyberpunk042.mcshaders.fabric.render;
 import net.cyberpunk042.mcshaders.McShaders;
 import net.cyberpunk042.mcshaders.core.backend.EffectBackend;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
+import net.cyberpunk042.mcshaders.vanilla.render.WorldSampler;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionEvents;
 import net.minecraft.client.Minecraft;
@@ -31,7 +32,8 @@ public final class RenderHook {
     }
 
     private static void onExtraction(LevelExtractionContext context) {
-        WorldState state = WorldSampler.from(context);
+        WorldState state = WorldSampler.from(
+                context.level(), context.camera(), context.deltaTracker(), context.levelState());
         if (state == null) {
             return;
         }
@@ -52,7 +54,7 @@ public final class RenderHook {
         // monotonic time for effects that animate. Passing the delta as both would
         // leave anything animated stuttering in place.
         double deltaTicks = context.deltaTracker().getGameTimeDeltaTicks();
-        double elapsedTicks = WorldSampler.elapsedTicks(context);
+        double elapsedTicks = WorldSampler.elapsedTicks(context.level(), context.deltaTracker());
 
         McShaders.pipeline().frame(
                 state,

@@ -1,13 +1,14 @@
-package net.cyberpunk042.mcshaders.fabric.render;
+package net.cyberpunk042.mcshaders.vanilla.render;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
 import net.cyberpunk042.mcshaders.core.binding.DimensionId;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
 import net.cyberpunk042.mcshaders.sample.WorldSample;
-import net.fabricmc.fabric.api.client.rendering.v1.level.LevelExtractionContext;
 import net.minecraft.client.Camera;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.level.material.FogType;
@@ -20,15 +21,19 @@ import net.minecraft.world.level.material.FogType;
  * and every decision about what those values mean lives on the other side, where there
  * are tests.
  *
- * <h2>Why the extraction event</h2>
+ * <h2>Why the extraction phase</h2>
  *
- * <p>26.2 splits a frame into extracting render state and drawing from it.
- * {@code LevelExtractionEvents.END_EXTRACTION} fires between the two, which is both
- * early enough to publish before anything is drawn and generous enough to hand over
- * {@code ClientLevel}, {@code Camera} and {@code DeltaTracker} directly. The obvious
+ * <p>26.2 splits a frame into extracting render state and drawing from it. Both
+ * loaders fire an event between the two — Fabric's
+ * {@code LevelExtractionEvents.END_EXTRACTION} and NeoForge's
+ * {@code ExtractLevelRenderStateEvent} — which is early enough to publish before
+ * anything is drawn, and hands over exactly the four values below. The obvious Fabric
  * alternative, {@code LevelRenderEvents.START_MAIN}, fires during drawing and provably
- * after fog is computed — see
- * <a href="../../../../../../../docs/RENDERING-26.2.md">RENDERING-26.2.md</a>.
+ * after fog is computed; see {@code docs/RENDERING-26.2.md}.
+ *
+ * <p>That the two loaders' events agree on all four types is what lets this be one
+ * method rather than two. They are not merely similar: both hand back the same
+ * {@link LevelRenderState}, and both fire after all vanilla state is extracted.
  *
  * <h2>What is not sampled</h2>
  *
@@ -45,17 +50,19 @@ public final class WorldSampler {
     /**
      * Builds the state this frame should be resolved against.
      *
-     * @param context the extraction event's context
+     * @param level       the level being extracted
+     * @param camera      where it is being observed from
+     * @param deltaTracker the frame's partial tick
+     * @param levelState  the render state, for what the camera is submerged in
      * @return the sampled state, or null when there is nothing to sample
      */
-    public static WorldState from(LevelExtractionContext context) {
-        ClientLevel level = context.level();
-        Camera camera = context.camera();
-        if (level == null || camera == null) {
+    public static WorldState from(ClientLevel level, Camera camera,
+            DeltaTracker deltaTracker, LevelRenderState levelState) {
+        if (level == null || camera == null || deltaTracker == null || levelState == null) {
             return null;
         }
 
-        float partialTick = context.deltaTracker().getGameTimeDeltaPartialTick(false);
+        float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         BlockPos at = camera.blockPosition();
 
         return WorldSample.of(
@@ -64,7 +71,7 @@ public final class WorldSampler {
                 level.getRainLevel(partialTick),
                 level.getThunderLevel(partialTick),
                 biomeTagsAt(level, at),
-                isSubmerged(context));
+                isSubmerged(levelState));
     }
 
     /**
@@ -78,13 +85,11 @@ public final class WorldSampler {
      * the partial tick is added so an effect animates smoothly between them rather
      * than stepping twenty times a second.
      */
-    public static double elapsedTicks(LevelExtractionContext context) {
-        ClientLevel level = context.level();
-        if (level == null) {
+    public static double elapsedTicks(ClientLevel level, DeltaTracker deltaTracker) {
+        if (level == null || deltaTracker == null) {
             return 0;
         }
-        return level.getGameTime()
-                + context.deltaTracker().getGameTimeDeltaPartialTick(false);
+        return level.getGameTime() + deltaTracker.getGameTimeDeltaPartialTick(false);
     }
 
     /**
@@ -126,8 +131,8 @@ public final class WorldSampler {
      * shape only fails at runtime, and it is why this one is written rather than
      * deferred.
      */
-    private static boolean isSubmerged(LevelExtractionContext context) {
-        FogType fog = context.levelState().cameraRenderState.fogType;
+    private static boolean isSubmerged(LevelRenderState levelState) {
+        FogType fog = levelState.cameraRenderState.fogType;
         return fog == FogType.WATER || fog == FogType.LAVA || fog == FogType.POWDER_SNOW;
     }
 }
