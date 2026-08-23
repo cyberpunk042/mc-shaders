@@ -1,4 +1,4 @@
-package net.cyberpunk042.mcshaders.fabric.gui;
+package net.cyberpunk042.mcshaders.vanilla.gui;
 
 import net.minecraft.client.gui.components.Button;
 import net.minecraft.client.gui.components.StringWidget;

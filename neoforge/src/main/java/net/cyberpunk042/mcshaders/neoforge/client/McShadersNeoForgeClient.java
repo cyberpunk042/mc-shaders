@@ -4,6 +4,7 @@ import net.cyberpunk042.mcshaders.McShaders;
 import net.cyberpunk042.mcshaders.McShadersAPI;
 import net.cyberpunk042.mcshaders.sample.SamplingGaps;
 import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,19 +17,20 @@ import org.slf4j.LoggerFactory;
  * The render and fog events this registers are client-only classes; naming them from
  * the common mod class would load them on a dedicated server.
  *
- * <p>Not registered here: the editor. {@code SchemaScreen} lives in the Fabric module
- * and would need moving before NeoForge could open it, which is a larger change than
- * this one and is not pretended to be done.
+ * <p>The constructor takes the mod's own event bus. Most of this mod subscribes on the
+ * game bus, but {@code RegisterKeyMappingsEvent} is a mod-bus event, so {@link EditorKey}
+ * needs the one thing only the constructor is handed.
  */
 @Mod(value = McShaders.MOD_ID, dist = Dist.CLIENT)
 public final class McShadersNeoForgeClient {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(McShaders.MOD_NAME);
 
-    public McShadersNeoForgeClient() {
+    public McShadersNeoForgeClient(IEventBus modEventBus) {
         LOGGER.info("{} client init — backend: {}", McShaders.MOD_NAME, McShaders.backend().id());
         RenderHook.register();
         FogHook.register();
+        EditorKey.register(modEventBus);
         warnAboutUnevaluableBindings();
     }
 
