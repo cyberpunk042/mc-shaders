@@ -41,9 +41,13 @@ import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
  *       <td>Read from Jade's mixin — the field exists and is public</td></tr>
  *   <tr><td>{@code end}</td><td>{@code FogData.renderDistanceEnd}</td>
  *       <td>Same</td></tr>
- *   <tr><td>{@code color}</td><td>the {@code Vector4f} {@code setupFog} returns</td>
- *       <td><b>Inferred.</b> The return type is established; that it is the fog
- *       colour is not, because Jade ignores the return value</td></tr>
+ *   <tr><td>{@code color}</td><td>the value {@code setupFog} returns</td>
+ *       <td><b>Inferred, and weaker than it was.</b> This once said the return type
+ *       was established. It is not: Jade's mixin declares
+ *       {@code CallbackInfoReturnable<Vector4f>} while a NeoForge patch shows a
+ *       method in {@code FogRenderer} returning {@code FogData}. Mixin does not
+ *       validate that generic, so Jade shipping is not proof. Either there are two
+ *       methods or one reading is wrong — see RENDERING-26.2.md</td></tr>
  * </table>
  *
  * <p>The defaults are a plausible starting point, not a claim about what vanilla

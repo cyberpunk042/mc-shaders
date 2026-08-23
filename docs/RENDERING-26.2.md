@@ -227,6 +227,112 @@ That means M2 splits cleanly, and the fog half is the half that is unblocked:
 Reading is what moved (1) from blocked to unblocked. Nothing here has been run, so
 none of it is proven to *work* — only proven to exist, in Mojang naming, on 26.2.
 
+## Sampling the world, and where the per-frame hook goes
+
+Read after the fog section above, from Fabric API branch `26.2`, NeoForge `26.2.x`
+and Paper at `mcVersion=26.2`. NeoForge and Paper patch files are diffs against
+Mojang-mapped 26.2 source, so a line with no `+`/`-` prefix is verbatim vanilla.
+
+### The hook is `END_EXTRACTION`, not `START_MAIN`
+
+`WorldRenderEvents` no longer exists. Its successor is
+`net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents`, and 26.2
+splits a frame into an **extraction** phase and a **drawing** phase — everything
+needed for rendering is gathered first, then drawn.
+
+That split decides which hook is correct, and the answer is not the obvious one:
+
+| | Fires | Hands you |
+|---|---|---|
+| `LevelRenderEvents.START_MAIN` | inside the main pass, after the sky is drawn | `GameRenderer`, `LevelRenderer`, `LevelRenderState` |
+| `LevelExtractionEvents.END_EXTRACTION` | after render states are extracted, before anything is drawn | the above **plus `ClientLevel`, `Camera`, `DeltaTracker`** |
+
+`END_EXTRACTION` wins twice over. It runs earlier, and its
+`LevelExtractionContext` hands over exactly the three objects a `WorldState`
+sampler needs, so nothing has to reach for `Minecraft.getInstance()`.
+
+**Fog is computed before `START_MAIN`, provably.** `LevelRenderer#render` takes the
+fog as *parameters* — Fabric's own mixin into it declares
+`GpuBufferSlice terrainFog, Vector4f fogColor`, and vanilla's call site passes
+`cameraState.fogData.color` in. Both are already populated before `render` is
+entered, and `START_MAIN` fires inside it. So publishing at `START_MAIN` would have
+the fog mixin reading the *previous* frame's values.
+
+**One link is not closed.** The `setupFog` call site appears in no patch context in
+any tree, so while extraction demonstrably precedes drawing, whether `setupFog`
+belongs to the drawing phase is inferred from its caller rather than proven. If it
+turns out to run during extraction, its order against `END_EXTRACTION` is undecided.
+Worth confirming with a timestamp at both sites before depending on it.
+
+### Time of day is gone, and it blocks a condition
+
+`Level#getDayTime()` does not exist on 26.2 — **zero occurrences** across Fabric API,
+NeoForge, Paper and Jade. It has been replaced by two new packages:
+
+- `net.minecraft.world.clock` — `ClockManager#getTotalTicks(Holder<WorldClock>)`,
+  with a client implementation `net.minecraft.client.ClientClockManager` held by
+  `ClientPacketListener`
+- `net.minecraft.world.timeline` — `Timelines.OVERWORLD_DAY`, whose
+  `getCurrentTicks(clockManager)` is the tick-within-day and `getPeriodCount` the day
+  number
+
+A dimension names its clock through `level.dimensionType().defaultClock()`.
+
+**What is missing is the client accessor**: no getter reaching `ClientClockManager`
+from `Minecraft` or `ClientLevel` was found. Until that is established,
+`Condition.TimeOfDay` cannot be evaluated correctly, and a sampler must say so rather
+than quietly reporting noon — a binding gated on night that simply never fires is
+indistinguishable from a binding that is broken.
+
+`ClientLevel#getGameTime()` exists but is total elapsed ticks, not tick-of-day.
+
+### The rest of a WorldState, verified
+
+| Field | Call | Note |
+|---|---|---|
+| dimension | `clientLevel.dimension().identifier()` | |
+| Y | `camera.position().y` | **not** `camera.getY()` — see below |
+| weather | `level.getRainLevel(partialTick)`, `getThunderLevel(partialTick)` | floats; better for fog than the booleans anyway |
+| biome tags | `level.getBiome(pos).tags()` → `Stream<TagKey<Biome>>` | |
+| submerged | `levelState().cameraRenderState.fogType` | |
+
+Four traps in that table, each of which compiles-then-misbehaves or does not compile
+at all:
+
+- **`ResourceLocation` is gone entirely** — it is `net.minecraft.resources.Identifier`
+  now. Zero occurrences of the old name across three 26.2 trees against 751 imports of
+  the new one.
+- **The accessors are asymmetric.** `ResourceKey#identifier()` but
+  `TagKey#location()`. One line in NeoForge's `TagsCommand` uses both in the same
+  expression. Assuming the rename was uniform gets the tag one wrong.
+- **`Camera#getFluidInCamera()` is gone.** Use `cameraState.fogType`
+  (`net.minecraft.world.level.material.FogType`, which did *not* move into the new fog
+  package). This is reachable from the render state, so it needs no mixin.
+- **`Camera#getY()` has no evidence behind it.** The `camera.getY()` that does appear
+  in 26.2 source is on an `Entity` field named `camera`, not on
+  `net.minecraft.client.Camera`. Use `position().y`.
+
+### An unresolved conflict about `setupFog`
+
+Jade's mixin declares `CallbackInfoReturnable<Vector4f>`; a NeoForge patch hunk in
+`FogRenderer` shows a method building `FogData fog = new FogData()` and returning it.
+Mixin validates parameter types against the target at apply time but **not** the
+`CallbackInfoReturnable` generic, so Jade shipping does not prove the return type.
+Either there are two methods or one reading is wrong.
+
+This matters for [`BuiltinEffects`](../common/src/main/java/net/cyberpunk042/mcshaders/BuiltinEffects.java),
+whose `color` parameter is documented as inferred from that return type. The
+inference now has a conflict behind it, so it is weaker than when it was written, not
+stronger.
+
+### A path that may avoid the mixin
+
+`cameraState.fogData` and `cameraState.fogType` both live on `CameraRenderState`,
+and `levelState().cameraRenderState` is reachable from both render contexts. If fog
+data can be written during extraction and is read during drawing, the fog mixin is
+unnecessary and the frame-lag question disappears with it. That depends on the same
+unclosed link above — when `setupFog` runs — so it is a lead, not a plan.
+
 ## The GUI API, read out of Jade rather than remembered
 
 Jade's `src/main/java/snownee/jade/gui/` is several real screens compiled against
