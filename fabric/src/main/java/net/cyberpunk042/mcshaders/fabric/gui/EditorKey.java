@@ -1,15 +1,12 @@
 package net.cyberpunk042.mcshaders.fabric.gui;
 
 import com.mojang.blaze3d.platform.InputConstants;
-import java.util.List;
 import net.cyberpunk042.mcshaders.McShaders;
-import net.cyberpunk042.mcshaders.McShadersAPI;
-import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
+import net.cyberpunk042.mcshaders.vanilla.gui.EditorScreens;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.fabricmc.fabric.api.client.keymapping.v1.KeyMappingHelper;
 import net.minecraft.client.KeyMapping;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.resources.Identifier;
 
 /**
@@ -75,7 +72,7 @@ public final class EditorKey {
         if (!pressed || minecraft.gui.screen() != null) {
             return;
         }
-        minecraft.gui.setScreen(openingScreen());
+        minecraft.gui.setScreen(EditorScreens.opening());
     }
 
     /**
@@ -84,16 +81,4 @@ public final class EditorKey {
      * <p>Read at press time rather than at registration: schemas are contributed during
      * mod initialisation, which has not finished when the key is registered.
      */
-    private static Screen openingScreen() {
-        List<EffectSchema> schemas = McShadersAPI.schemas().all();
-        if (schemas.isEmpty()) {
-            return new NothingToEditScreen();
-        }
-        if (schemas.size() == 1) {
-            EffectSchema only = schemas.get(0);
-            return new SchemaScreen(
-                    null, McShadersAPI.tuning().sessionFor(only), McShadersAPI.tuning());
-        }
-        return new EffectPickerScreen(schemas);
-    }
 }

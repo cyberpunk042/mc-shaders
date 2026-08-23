@@ -172,6 +172,14 @@ same as their looking right. That needs someone to open them. And the mod regist
 no effects of its own yet, so on a fresh install the empty-state screen is the
 correct result rather than a failure.
 
+**Both loaders now, as of the `vanilla/` module.** The three screens and the
+choose-which-screen logic moved to `vanilla/`; only binding a key stayed per-loader,
+because that genuinely differs. On NeoForge the mapping and its category register
+through `RegisterKeyMappingsEvent` — a **mod-bus** event, unlike everything else this
+mod subscribes to — while the tick that opens the screen is on the game bus. NeoForge
+deprecates `KeyMapping.Category.register` in favour of the event, so the vanilla static
+is not used there.
+
 ## M2 — First rendering backend
 
 Make it draw something.

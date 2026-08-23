@@ -1,4 +1,4 @@
-package net.cyberpunk042.mcshaders.fabric.gui;
+package net.cyberpunk042.mcshaders.vanilla.gui;
 
 import java.util.List;
 import net.cyberpunk042.mcshaders.McShadersAPI;
