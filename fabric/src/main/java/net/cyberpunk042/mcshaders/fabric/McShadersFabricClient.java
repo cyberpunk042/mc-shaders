@@ -16,10 +16,11 @@ import org.slf4j.LoggerFactory;
  * {@code LevelExtractionEvents.END_EXTRACTION}. Before this, {@code ShaderPipeline}
  * existed and nothing called it, so every frame resolved a look and dropped it.
  *
- * <p>Still absent: the mixin that applies the fog values the pipeline publishes. Its
- * entry point is established (see docs/RENDERING-26.2.md) but which of
- * {@code FogData}'s two distance pairs a dimension look should write is not, and that
- * needs a running game rather than a guess.
+ * <p>The mixin that applies those values now exists — {@code FogRendererMixin}, at
+ * the tail of {@code FogRenderer#setupFog}. Which of {@code FogData}'s two distance
+ * pairs a dimension look should write is still a judgement rather than a finding; the
+ * choice and its counter-argument are recorded in that file, and settling it needs a
+ * running game.
  */
 public final class McShadersFabricClient implements ClientModInitializer {
 

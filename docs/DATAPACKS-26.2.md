@@ -58,11 +58,53 @@ and error reporting. We do not want them either — `BindingLoader` skips a brok
 file and reports it by name, which is the behaviour we chose on purpose, and a
 listener that fails the reload wholesale would undo it.
 
-## What is still missing
+## Reading the files — the last link, now read
 
-Reading the files out of a `ResourceManager` — the method that lists a directory
-and opens each entry — has not been read from source. Jade's listeners are handed
-their resources by the vanilla JSON base class or do not read files at all, so the
-`ResourceManager` methods themselves are the one link in this chain still unread.
+This was the one gap: Jade's listeners are handed their resources by the vanilla
+JSON base class, so none of them showed the listing call itself. It came from
+vanilla instead. NeoForge's patch for `SimpleJsonResourceReloadListener` carries
+`scanDirectory` in its context lines — unprefixed, so Mojang-mapped 26.2 verbatim:
 
-Everything above it is established.
+```java
+for (Entry<Identifier, Resource> entry : lister.listMatchingResources(manager).entrySet()) {
+    Identifier location = entry.getKey();
+    Identifier id = lister.fileToId(location);
+
+    try (Reader reader = entry.getValue().openAsReader()) {
+```
+
+| Piece | Signature |
+|---|---|
+| Build the lister | `FileToIdConverter.json(String directory)` |
+| List a directory | `FileToIdConverter#listMatchingResources(ResourceManager)` → `Map<Identifier, Resource>` |
+| File path → binding id | `FileToIdConverter#fileToId(Identifier)` → `Identifier` |
+| Open one entry | `Resource#openAsReader()` → `Reader`, throws `IOException` |
+
+Corroborated independently in Fabric API, which calls
+`fileToIdConverter.listMatchingResources(state.resourceManager())` in `TagAliasLoader`,
+and in NeoForge's own `DirectoryPalettedPermutations`.
+
+**One file open at a time.** Vanilla opens each entry inside try-with-resources and
+closes it before the next. `BindingLoader.loadReaders` would take readers directly,
+but its signature wants every one of them open simultaneously — it was designed
+before this API had been read, and a pack set is not bounded. So the listener follows
+vanilla and reads each file to a string. `loadReaders` consequently still has no
+caller.
+
+The chain is complete: `ResourceLoader` → `ResourceManagerReloadListener` →
+`listMatchingResources` → `openAsReader` → `BindingLoader` → `McShadersAPI.loadBindings`.
+Implemented in
+[`BindingReloadListener`](../fabric/src/main/java/net/cyberpunk042/mcshaders/fabric/data/BindingReloadListener.java).
+
+## What this does not cover
+
+**Dedicated servers.** Bindings are `data/` content, so the reload is server-side and
+the registry it fills is a static in that JVM. In singleplayer and LAN the integrated
+server shares the client's JVM and it works. On a dedicated server the reload runs
+where nothing renders, and the connecting client never receives those files. Syncing
+them over the network is not written, and nothing here should read as though it were.
+
+**NeoForge.** The listener above is Fabric-only; `ResourceLoader` is Fabric API. The
+vanilla half — the lister, the converter, `openAsReader` — is loader-neutral and
+would be reused as-is, but it cannot live in `common`, which has no Minecraft
+dependency by design.

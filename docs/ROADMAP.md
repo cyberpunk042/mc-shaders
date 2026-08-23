@@ -223,22 +223,40 @@ Make it authorable without Java.
   It also settles which listener to use: `SimpleJsonResourceReloadListener` is
   generic over a DFU codec on 26.2, which does not compose with our gson codec, so
   M3 uses the plain `ResourceManagerReloadListener` and feeds `BindingLoader`
-- Datapack loading from `data/<ns>/mcshaders/bindings/*.json` — **half done**:
+- ~~Datapack loading from `data/<ns>/mcshaders/bindings/*.json`~~ — **done**:
   `BindingLoader` turns a set of files into a registry, skipping the broken ones
   rather than blanking every dimension over one typo, and reporting what it
-  skipped and what overrode what. `McShadersAPI.loadBindings(Map)` is the
-  documented way in, and there is one real file at that path already —
-  `beyond_depths.json`, pinned by a test that requires it to equal the binding the
-  mod registers in Java. Handing the loader the files is the part that still needs
-  Minecraft's resource manager
-- Reload handling — build a fresh registry, swap atomically, ease into it.
-  `McShaders.setRegistry` is the swap and `Transition` is the easing; what is
-  missing is the reload event that calls them
+  skipped and what overrode what. `BindingReloadListener` is what finally hands it
+  the files: the last unread link was `FileToIdConverter#listMatchingResources` plus
+  `Resource#openAsReader`, both now read out of vanilla 26.2 — see
+  [DATAPACKS-26.2.md](DATAPACKS-26.2.md)
+- ~~Reload handling — build a fresh registry, swap atomically, ease into it~~ —
+  **done**: the listener is registered on the main entrypoint, so `/reload` reaches
+  `McShaders.setRegistry` and `Transition` eases into the result
+- **A bug found in the wiring, not by it.** `loadBindings` applied the pack set
+  wholesale, so the first `/reload` replaced every binding a mod had registered in
+  Java — and since `registerBinding` throws once registration closes, nothing could
+  put them back. This mod's own `beyond_depths` was among them. The reasoning behind
+  wholesale replacement is about *packs*, which a player can remove; it never applied
+  to bindings compiled into a mod. Packs are now layered *over* the registered set,
+  and a pack binding reusing a registered id overrides that one rather than deleting
+  the rest. `BindingLayeringTest` pins it, and the first version of that test was
+  itself wrong — it captured the baseline through the method under test, so four of
+  its assertions passed against the unfixed code. Mutation caught it
 - ~~Pack-facing validation errors that name the file and the field~~ — **done**:
   `nether.json at stack.layers[2].params.dir[1]: expected a number, found a string`
 
 **Done when:** a dimension's look can be changed by editing JSON and running
 `/reload`, with no restart.
+
+**Where that stands:** every link is written and the chain is closed, but the same
+caveat as M2 applies — nobody has run it. What is *known* not to be covered is
+dedicated servers: bindings are `data/` content, so the reload is server-side, and
+on a dedicated server it fills a registry in a JVM that renders nothing. Singleplayer
+and LAN share a JVM and are what this milestone's done-when describes. Syncing a
+server's bindings to its clients is unwritten and is not claimed. NeoForge has no
+listener yet either — the vanilla half is loader-neutral, but `ResourceLoader` is
+Fabric API and `common` has no Minecraft dependency to host the shared part in.
 
 ## M4 — Demo dimensions
 
