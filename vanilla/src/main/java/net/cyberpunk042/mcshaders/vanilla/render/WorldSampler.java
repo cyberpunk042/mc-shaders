@@ -12,6 +12,8 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
+import net.cyberpunk042.mcshaders.McShadersAPI;
+import net.cyberpunk042.mcshaders.diag.ActiveLook;
 import net.cyberpunk042.mcshaders.diag.ChainCheck;
 import net.minecraft.world.level.material.FogType;
 import org.slf4j.Logger;
@@ -74,13 +76,16 @@ public final class WorldSampler {
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         BlockPos at = camera.blockPosition();
 
-        return WorldSample.of(
+        WorldState sampled = WorldSample.of(
                 dimensionOf(level),
                 camera.position().y,
                 level.getRainLevel(partialTick),
                 level.getThunderLevel(partialTick),
                 biomeTagsAt(level, at),
                 isSubmerged(levelState));
+
+        reportLookIfChanged(sampled);
+        return sampled;
     }
 
     /**
@@ -152,6 +157,21 @@ public final class WorldSampler {
      * needs its own copy of the timing — and because a chain that is broken at the
      * render hook never gets this far, which is itself the report's first finding.
      */
+    /**
+     * Says which bindings are winning, each time that answer changes.
+     *
+     * <p>{@code emitDueReport} says whether the machinery ran; this says whether it is
+     * doing the right thing. With several bindings on one dimension separated by
+     * condition and priority, walking into a forest during a storm should pick one over
+     * another, and nothing else makes that visible.
+     */
+    private static void reportLookIfChanged(WorldState state) {
+        String line = ActiveLook.describeIfChanged(McShadersAPI.bindings(), state);
+        if (line != null) {
+            LOGGER.info("{}", line);
+        }
+    }
+
     private static void emitDueReport() {
         ChainCheck.Report due = ChainCheck.dueReport();
         if (due == null) {
