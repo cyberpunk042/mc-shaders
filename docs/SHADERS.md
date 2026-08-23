@@ -203,6 +203,7 @@ dimension look should write. Both the choice and the argument against it are rec
 
 | You want to | Read |
 |---|---|
+| Build a shape — a sun, a magic circle, a beam | **[SHAPES.md](SHAPES.md)** — 16 shapes, fill, colour, patterns, animation. Tested; nothing draws it yet |
 | Author a look in a datapack | **[BINDINGS.md](BINDINGS.md)** — every field, every condition type. This page for why; `datapack/` for working examples |
 | Use it from your own mod | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md) |
 | Write a backend that draws | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md#contributing-a-backend) — the contract, and what you receive per frame |

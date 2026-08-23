@@ -31,15 +31,34 @@ world conditions, and eased between — with no Java and no GLSL.
 **New here?** [docs/SHADERS.md](docs/SHADERS.md) explains what this does in plain terms
 and is the right place to start.
 
+## What is in here
+
+Two halves, and they are at different stages.
+
+**Looks** — what the whole screen does. Fog that closes in when it thunders, per
+dimension, on conditions, written as datapack JSON with no code. See
+[BINDINGS.md](docs/BINDINGS.md).
+
+**Forms** — things with a shape. A sun, a magic circle, a beam, a cage: **16 shapes**
+composed with fill, colour, arrangement patterns and animation into field layers. All
+of it tested; **none of it drawn yet**, because no renderer consumes a mesh. See
+[SHAPES.md](docs/SHAPES.md).
+
+And a **checker** that validates shader packs without the game, which works today and
+needs neither half.
+
 ## What works, and what does not
 
 | | |
 |---|---|
 | The look model — layers, params, conditions, priority merge, easing | **Tested**, no Minecraft needed — format reference in [docs/BINDINGS.md](docs/BINDINGS.md) |
+| Shader-pack checker (`check/`) | **Works today**, standalone, no game |
+| The geometry engine — 16 shapes, 63 arrangement patterns, animation, fields | **Tested**, no Minecraft needed — catalogue in [docs/SHAPES.md](docs/SHAPES.md) |
+| Anything drawing that geometry | **Not built** — nothing outside `core` consumes a `Mesh` |
+| Fields authorable as data | **Not built** — the model is Java only; bindings are the half that is data |
 | Datapack loading and `/reload` | **Compile-verified**; never observed loading a file |
 | Fog reaching the frame | **Compile-verified**; never observed changing a pixel |
 | In-game editor (both loaders) | **Compiles**; screens never opened |
-| Shader-pack checker (`check/`) | **Works today**, standalone, no game |
 | Its own post-processing chains | **Not built** — 26.2 entry points not established |
 | **Running your own GLSL** | **Not built.** You can contribute a *backend* that draws however you like, but nothing here loads shader source — see [docs/SHADERS.md](docs/SHADERS.md#can-i-bring-my-own-shaders) |
 | Coexistence with Iris and friends | **Not built** |
@@ -168,6 +187,7 @@ It cannot tell you whether the GLSL compiles. That needs a driver.
 |---|---|
 | [SHADERS.md](docs/SHADERS.md) | **Start here.** What this does, in plain terms |
 | [BINDINGS.md](docs/BINDINGS.md) | The datapack format: every field, all ten condition types |
+| [SHAPES.md](docs/SHAPES.md) | Shapes, fields and what you can build — with a sun and a magic circle |
 | [USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md) | Consuming it from a mod or off-game |
 | [ROADMAP.md](docs/ROADMAP.md) | What is done, what is next, and what each milestone did *not* do |
 | [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout and data flow |
