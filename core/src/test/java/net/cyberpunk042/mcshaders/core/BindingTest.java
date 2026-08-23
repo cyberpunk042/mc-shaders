@@ -195,4 +195,65 @@ class BindingTest {
             assertEquals(0.5, forward.byId("x").orElseThrow().weight());
         }
     }
+
+    @Nested
+    @DisplayName("a time of day that cannot be read")
+    class UnknownDayTime {
+
+        private static final DimensionId ANYWHERE = DimensionId.of("mcshaders", "test_unknown");
+
+        private static WorldState atUnknownTime() {
+            return WorldState.of(ANYWHERE).withDayTime(WorldState.UNKNOWN_DAY_TIME);
+        }
+
+        @Test
+        @DisplayName("survives the constructor instead of folding into a late hour")
+        void isNotNormalised() {
+            // floorMod(-1, 24000) is 23999, which is inside any ordinary night range.
+            // Folding it would turn "cannot be read" into "always night" — the exact
+            // opposite of the intent, and worse than substituting noon.
+            assertEquals(WorldState.UNKNOWN_DAY_TIME, atUnknownTime().dayTime());
+        }
+
+        @Test
+        @DisplayName("any negative reduces to the one unknown value")
+        void negativesCollapse() {
+            assertEquals(
+                    WorldState.UNKNOWN_DAY_TIME,
+                    WorldState.of(ANYWHERE).withDayTime(-5000).dayTime());
+        }
+
+        @Test
+        @DisplayName("reports itself as not a reading")
+        void reportsItself() {
+            assertFalse(atUnknownTime().hasDayTime());
+            assertTrue(WorldState.of(ANYWHERE).withDayTime(6000).hasDayTime());
+        }
+
+        @Test
+        @DisplayName("a night range that wraps midnight does not match it")
+        void wrappingRangeDoesNotMatch() {
+            Condition night = new Condition.TimeOfDay(13000, 1000);
+
+            assertFalse(night.test(atUnknownTime()),
+                    "23999 would have matched this range, so a night look would have "
+                            + "been on permanently rather than never");
+        }
+
+        @Test
+        @DisplayName("a range that does not wrap does not match it either")
+        void plainRangeDoesNotMatch() {
+            assertFalse(new Condition.TimeOfDay(13000, 23000).test(atUnknownTime()));
+        }
+
+        @Test
+        @DisplayName("a real reading still works")
+        void realReadingsUnaffected() {
+            Condition night = new Condition.TimeOfDay(13000, 1000);
+
+            assertTrue(night.test(WorldState.of(ANYWHERE).withDayTime(18000)));
+            assertFalse(night.test(WorldState.of(ANYWHERE).withDayTime(6000)));
+        }
+    }
+
 }

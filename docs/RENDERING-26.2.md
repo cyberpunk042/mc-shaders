@@ -312,18 +312,71 @@ at all:
   in 26.2 source is on an `Entity` field named `camera`, not on
   `net.minecraft.client.Camera`. Use `position().y`.
 
-### An unresolved conflict about `setupFog`
+### `setupFog` returns `FogData` — resolved
 
-Jade's mixin declares `CallbackInfoReturnable<Vector4f>`; a NeoForge patch hunk in
-`FogRenderer` shows a method building `FogData fog = new FogData()` and returning it.
-Mixin validates parameter types against the target at apply time but **not** the
-`CallbackInfoReturnable` generic, so Jade shipping does not prove the return type.
-Either there are two methods or one reading is wrong.
+This section previously recorded a conflict: Jade's mixin declares
+`CallbackInfoReturnable<Vector4f>`, while a NeoForge patch showed `FogRenderer`
+building a `FogData` and returning it. Reading the whole patch settles it in
+NeoForge's favour, and the resolution is better for us than either guess.
 
-This matters for [`BuiltinEffects`](../common/src/main/java/net/cyberpunk042/mcshaders/BuiltinEffects.java),
-whose `color` parameter is documented as inferred from that return type. The
-inference now has a conflict behind it, so it is weaker than when it was written, not
-stronger.
+The patch's context lines — verbatim vanilla 26.2 — are the method's own body:
+
+```java
+FogData fog = new FogData();
+this.computeFogColor(camera, partialTickTime, level, renderDistanceInChunks,
+                     darkenWorldAmount, fog.color);
+for (FogEnvironment fogEnvironment : FOG_ENVIRONMENTS) {
+    if (fogEnvironment.isApplicable(fogType, entity)) {
+        fogEnvironment.setupFog(fog, camera, level, renderDistanceInBlocks, deltaTracker);
+        break;
+    }
+}
+float renderDistanceFogSpan = Mth.clamp(renderDistanceInBlocks / 10.0F, 4.0F, 64.0F);
+fog.renderDistanceStart = renderDistanceInBlocks - renderDistanceFogSpan;
+fog.renderDistanceEnd = renderDistanceInBlocks;
+return fog;
+```
+
+Jade's generic is simply wrong, and harmlessly so: Mixin validates a target's
+*parameters* but the `CallbackInfoReturnable` type argument is erased, and Jade never
+calls `getReturnValue()`. A shipped mod is evidence about parameters, not about the
+generic — which is the general lesson, not a fact about Jade.
+
+**Note the second `setupFog`.** `FogEnvironment#setupFog(FogData, Camera, Level,
+float, DeltaTracker)` is a different method that happens to share the name. It is
+called *by* the one above. `@Mixin(FogRenderer.class)` disambiguates, but anything
+searching by name alone will find both.
+
+### `FogData` has four fields that matter, in two pairs
+
+| Field | Set by | Meaning |
+|---|---|---|
+| `color` | `computeFogColor(..., fog.color)` | the fog colour |
+| `renderDistanceStart` / `renderDistanceEnd` | vanilla, unconditionally, after the environment loop | the view-distance fog |
+| `environmentalStart` / `environmentalEnd` | whichever `FogEnvironment` applies | the in-water / in-lava / in-powder-snow fog |
+
+The pairs are not interchangeable, and picking the wrong one is the kind of mistake
+that renders as "nothing happened". Jade *reads* `renderDistance*` to learn the view
+distance. NeoForge's own fog-modification event exposes the other pair —
+`ViewportEvent.RenderFog` maps `environmentalEnd` to the far plane and
+`environmentalStart` to the near plane — which is a strong hint that `environmental*`
+is the pair a mod changing atmosphere is meant to write.
+
+**Still open, and it needs the game:** which pair mc-shaders should write for a
+dimension look. `environmental*` matches the intent and matches what NeoForge exposes;
+`renderDistance*` is what vanilla sets last and is unconditional. Both are reachable;
+only running it will show which one moves the frame.
+
+### Writing at `TAIL` should reach the frame
+
+Previously unestablished, now a chain of verified links rather than a hope. The
+`@Local(name = "fog") FogData` a mixin captures **is** the object returned, and
+`GameRenderer` passes `cameraState.fogData.color` into `LevelRenderer#render` — so
+what `setupFog` returns is what the frame is drawn with. Mutating it at `TAIL`, after
+vanilla has finished filling it, therefore changes what the renderer receives.
+
+That is not the same as having seen it work. It is the difference between an
+untested plan and a guess.
 
 ### A path that may avoid the mixin
 

@@ -41,14 +41,24 @@ import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
  *       <td>Read from Jade's mixin — the field exists and is public</td></tr>
  *   <tr><td>{@code end}</td><td>{@code FogData.renderDistanceEnd}</td>
  *       <td>Same</td></tr>
- *   <tr><td>{@code color}</td><td>the value {@code setupFog} returns</td>
- *       <td><b>Inferred, and weaker than it was.</b> This once said the return type
- *       was established. It is not: Jade's mixin declares
- *       {@code CallbackInfoReturnable<Vector4f>} while a NeoForge patch shows a
- *       method in {@code FogRenderer} returning {@code FogData}. Mixin does not
- *       validate that generic, so Jade shipping is not proof. Either there are two
- *       methods or one reading is wrong — see RENDERING-26.2.md</td></tr>
+ *   <tr><td>{@code color}</td><td>{@code FogData.color}</td>
+ *       <td><b>Now read, not inferred.</b> Vanilla fills it with
+ *       {@code computeFogColor(..., fog.color)} and {@code GameRenderer} passes
+ *       {@code cameraState.fogData.color} into the level renderer. Two earlier
+ *       versions of this row were wrong in opposite directions — first claiming the
+ *       return type was established, then that it was contested. It is neither: the
+ *       colour is a field, and {@code setupFog} returns the {@code FogData} holding
+ *       it</td></tr>
  * </table>
+ *
+ * <p>One thing this table does not settle. {@code FogData} carries <em>two</em>
+ * distance pairs — {@code renderDistanceStart}/{@code End}, which vanilla sets
+ * unconditionally from view distance, and {@code environmentalStart}/{@code End},
+ * which a {@code FogEnvironment} sets for water, lava and powder snow. This effect's
+ * {@code start} and {@code end} are documented against the first pair because that is
+ * the pair Jade reads, but NeoForge's own fog-modification event exposes the second,
+ * which suggests it is the one a mod changing atmosphere should write. Which is
+ * correct here cannot be decided without running the game — see RENDERING-26.2.md.
  *
  * <p>The defaults are a plausible starting point, not a claim about what vanilla
  * uses. Nothing here has been compared against a running game.
