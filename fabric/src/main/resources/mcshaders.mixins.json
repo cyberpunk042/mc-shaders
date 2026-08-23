@@ -1,0 +1,13 @@
+{
+  "required": true,
+  "package": "net.cyberpunk042.mcshaders.fabric.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "mixins": [],
+  "client": [
+    "FogRendererMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  },
+  "minVersion": "0.8"
+}
