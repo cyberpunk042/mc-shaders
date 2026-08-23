@@ -41,6 +41,7 @@ and is the right place to start.
 | In-game editor (both loaders) | **Compiles**; screens never opened |
 | Shader-pack checker (`check/`) | **Works today**, standalone, no game |
 | Its own post-processing chains | **Not built** — 26.2 entry points not established |
+| **Running your own GLSL** | **Not built.** You can contribute a *backend* that draws however you like, but nothing here loads shader source — see [docs/SHADERS.md](docs/SHADERS.md#can-i-bring-my-own-shaders) |
 | Coexistence with Iris and friends | **Not built** |
 
 The first launch is instrumented for this gap: after 200 frames the mod logs which links

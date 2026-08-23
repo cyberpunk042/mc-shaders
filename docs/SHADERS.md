@@ -95,6 +95,59 @@ binding files ──> registry ──> pipeline ──> backend ──> the fram
 The pipeline eases between looks rather than snapping, so crossing a biome edge during
 a storm fades rather than cuts.
 
+## Can I bring my own shaders?
+
+The honest answer is **not yet, and it is worth being precise about what that means**,
+because part of it works today and the part that does not is the interesting one.
+
+| You want to | Today |
+|---|---|
+| Author a **look** — fog, per dimension, on conditions | **Yes.** Datapack JSON, no code |
+| Declare a new **effect type** of your own | **Yes**, but a declaration draws nothing on its own |
+| Write a **backend** that draws your effect | **Yes.** You write the graphics code; the framework routes to it |
+| Hand the framework **your GLSL** and have it run it | **No.** Nothing here loads shader source at runtime |
+| Check a vanilla-style chain you already have | **Yes**, and it needs none of the above — see [The checker](#the-checker) |
+
+### What "bring your own backend" actually means
+
+`McShadersAPI.registerBackend(...)` is real and documented, and a backend you contribute
+is chosen by the same priority rules as the built-in one — there is no privileged path
+for this mod's own renderer. If there were, that would be a bug in the framework.
+
+But a backend is **Java that draws**. You receive a compiled `EffectGraph` — the layers
+that survived capability filtering, with their parameters resolved and eased — and it is
+yours to render however you like. The framework hands you *what* to draw and never *how*.
+Loading GLSL, compiling it, binding uniforms and running passes would all be yours to
+write.
+
+So today this is a framework for **routing looks to renderers**, not a framework for
+**running your shader code**.
+
+### What is missing, specifically
+
+The piece that would turn "write a backend" into "drop in a `.fsh`" is a backend that
+runs vanilla-style post-processing chains. Then bringing your own shader would mean
+adding a chain JSON and a fragment shader to a resource pack, and naming it from a
+binding — no Java at all.
+
+Most of the offline half of that already exists and is tested:
+
+- `core.glsl` — include resolution, cycle reporting, `#line` mapping so a driver error
+  names the file a human has to edit
+- `core.chain` — the chain and pass model
+- `core.layout` — std140 placement, and reading a uniform block back out of GLSL
+- `check/` — all of the above, as a CLI that gates a build
+
+**What does not exist is the runtime that executes them.** That is M2's unbuilt half, and
+it is blocked on something specific rather than on effort: the 26.2 entry points for
+hooking a post-processing chain have not been read out of any source that compiles on
+26.2, and this project does not guess at APIs. See
+[RENDERING-26.2.md](RENDERING-26.2.md), which lists what was established and what was
+not.
+
+If you know where 26.2 exposes that, it is the single most useful thing anyone could
+contribute — the layer above it is already built and waiting.
+
 ## The checker
 
 Independent of everything above, and usable on packs that have nothing to do with this
@@ -151,6 +204,7 @@ dimension look should write. Both the choice and the argument against it are rec
 |---|---|
 | Author a look in a datapack | This page, plus `datapack/` in the repo for working examples |
 | Use it from your own mod | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md) |
+| Write a backend that draws | [USING_AS_A_LIBRARY.md](USING_AS_A_LIBRARY.md#contributing-a-backend) — the contract, and what you receive per frame |
 | Know what is planned, in order | [ROADMAP.md](ROADMAP.md) |
 | Know what 26.2 changed | [RENDERING-26.2.md](RENDERING-26.2.md), [DATAPACKS-26.2.md](DATAPACKS-26.2.md) |
 | Understand the module layout | [ARCHITECTURE.md](ARCHITECTURE.md) |
