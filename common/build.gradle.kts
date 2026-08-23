@@ -33,6 +33,19 @@ dependencies {
 tasks.test {
     useJUnitPlatform()
     testLogging { events("passed", "skipped", "failed") }
+
+    // Four tests here read files out of the repository rather than the classpath: the
+    // shipped pack, and the documented examples that ReadmeExampleTest and
+    // BindingFormatDocTest parse straight out of the pages. None of those are inputs
+    // Gradle can infer, so editing a page and running the tests would report green
+    // without having re-read it — the one case the doc tests exist for.
+    inputs.files(
+        rootProject.fileTree("datapack"),
+        rootProject.file("README.md"),
+        rootProject.file("docs/SHADERS.md"),
+        rootProject.file("docs/BINDINGS.md"),
+    ).withPropertyName("documentsUnderTest")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 java {

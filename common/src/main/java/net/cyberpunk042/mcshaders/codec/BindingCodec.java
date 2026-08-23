@@ -42,6 +42,9 @@ import net.cyberpunk042.mcshaders.core.param.ParamValue;
  *
  * <h2>The format</h2>
  *
+ * <p>The complete field reference, with every condition type and its fields, is
+ * {@code docs/BINDINGS.md}. What follows is one example of the shape.
+ *
  * <pre>{@code
  * {
  *   "id": "nether_base",
@@ -73,14 +76,6 @@ import net.cyberpunk042.mcshaders.core.param.ParamValue;
  * an object with {@code r}/{@code g}/{@code b} is a colour. Tagging every value
  * would double the size of the common case for the benefit of none of them, and the
  * five shapes do not overlap, so the mapping is unambiguous in both directions.
- *
- * <p><b>What that costs:</b> a quoted number is a text parameter, not an error.
- * {@code "speed": "0.5"} is a typo a person will make, and nothing here can catch it
- * — text parameters are legitimate, and the codec does not know what {@code speed}
- * is meant to be. The layer that does know is {@code EffectSchema}, and
- * {@code SchemaAudit} is where a value of the wrong type against a declared
- * parameter gets reported. This is a real gap between the two layers rather than a
- * hidden one, and a test pins the behaviour so it cannot drift quietly.
  *
  * <p><b>What that costs:</b> a quoted number is a text parameter, not an error.
  * {@code "speed": "0.5"} is a typo a person will make, and nothing here can catch it
