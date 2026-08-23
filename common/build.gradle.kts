@@ -44,6 +44,11 @@ tasks.test {
         rootProject.file("README.md"),
         rootProject.file("docs/SHADERS.md"),
         rootProject.file("docs/BINDINGS.md"),
+        rootProject.file("docs/USING_AS_A_LIBRARY.md"),
+        rootProject.file("gradle.properties"),
+        rootProject.file("core/gradle.properties"),
+        rootProject.file("common/build.gradle.kts"),
+        rootProject.file("check/build.gradle.kts"),
     ).withPropertyName("documentsUnderTest")
         .withPathSensitivity(PathSensitivity.RELATIVE)
 }
