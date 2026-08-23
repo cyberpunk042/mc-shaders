@@ -19,6 +19,9 @@ resources source directory by both loader builds. One copy, shipped twice.
 |---|---|
 | `data/mcshaders/dimension_type/beyond.json` | How the dimension behaves and how vanilla renders it |
 | `data/mcshaders/dimension/beyond.json` | The dimension itself: which type, and what generates its terrain |
+| `data/mcshaders/mcshaders/bindings/beyond_depths.json` | Fog that closes in below Y 48 in `mcshaders:beyond` |
+| `data/mcshaders/mcshaders/bindings/overworld_weather.json` | The Overworld: pale and far normally, closing in during a storm |
+| `data/mcshaders/mcshaders/bindings/overworld_forest.json` | A green-tinted haze in forest biomes |
 
 **`mcshaders:beyond` is a placeholder name.** It is the demo dimension behind the
 Ancient City frame; rename it whenever there is a better one — two files and one
@@ -51,8 +54,9 @@ noise settings.
 
 ## The dynamic half
 
-`data/mcshaders/mcshaders/bindings/beyond_depths.json` is the other side of the
-division of labour: fog that closes in below Y 48, which a `dimension_type` has no way to say.
+The `bindings/` files are the other side of the division of labour: things a
+`dimension_type` has no way to say. `beyond_depths.json` is fog that closes in below
+Y 48; the Overworld pair changes with the weather and the biome you are standing in.
 Above that depth mc-shaders contributes nothing and the static base above stands
 alone — that is the intended outcome, not a gap.
 
@@ -67,11 +71,22 @@ contribute at `data/<their-namespace>/mcshaders/bindings/` without colliding wit
 some other mod that also wants a `bindings` directory — which a flat
 `data/<ns>/bindings/` would not.
 
-**This file is not loaded yet.** The reload listener that would read it is still
-ahead, so the mod registers the same binding in Java, from `BuiltinBindings`. The
-file is therefore documentation of the format — and documentation drifts, so a test
-parses this exact file and requires it to equal what the code registers. When the
-listener lands, the example is already known to be readable.
+**These files are loaded now** — `BindingReloadListener` reads them on both loaders at
+datapack reload. With the caveat that runs through this whole project: that listener
+compiles against the real 26.2 API, and has never been observed reading a file. What is
+certain is that the files parse, because tests load these exact ones and resolve them
+the way the renderer does.
+
+`beyond_depths` is also still registered in Java, from `BuiltinBindings`, and a test
+requires the file to equal what the code registers. The two are not redundant: a pack
+binding of the same id overrides the registered one, so the pair is what proves
+overriding works rather than replacing.
+
+The Overworld pair carries the other half of the format. `beyond_depths` uses only
+`y_range`; between them the Overworld files exercise `always`, `any`, `all`, `not`,
+`weather`, `submerged` and `biome_tag` — every condition type except `time_of_day`,
+which is left out on purpose because it cannot be read on 26.2 and a demo gated on it
+would ship a look that never appears.
 
 ## What is not here yet
 
