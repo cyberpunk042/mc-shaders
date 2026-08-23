@@ -221,6 +221,13 @@ open, and one in-game test should answer it for both.
 
 **Done when:** a hardcoded fog binding visibly changes the frame in-game.
 
+**Reading the result.** Every link is written and none has been watched running, so
+after 200 frames the mod says once, in the log, which links ran and — when one did
+not — what to look at. A dead render hook, a mixin that never applied, and a binding
+matching no dimension all look identical from a chair: the fog just does not change.
+`ChainCheck` distinguishes them. It lives in `common` and is the one part of the
+render path with tests, because counting and interpreting need no Minecraft.
+
 **Risk:** this is the milestone that touches Minecraft internals directly. Budget
 for the API not matching expectations.
 

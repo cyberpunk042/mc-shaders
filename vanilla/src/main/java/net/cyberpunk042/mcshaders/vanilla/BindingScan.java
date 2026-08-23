@@ -7,6 +7,7 @@ import java.util.Map;
 import net.cyberpunk042.mcshaders.McShaders;
 import net.cyberpunk042.mcshaders.McShadersAPI;
 import net.cyberpunk042.mcshaders.codec.BindingLoader;
+import net.cyberpunk042.mcshaders.diag.ChainCheck;
 import net.minecraft.resources.FileToIdConverter;
 import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.Resource;
@@ -83,6 +84,7 @@ public final class BindingScan {
         }
 
         BindingLoader.Result result = McShadersAPI.loadBindings(files);
+        ChainCheck.bindingsLoaded(files.size(), result.registry().size());
         report(files.size(), result);
         return result;
     }

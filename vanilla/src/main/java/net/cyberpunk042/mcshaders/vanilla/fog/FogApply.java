@@ -1,6 +1,7 @@
 package net.cyberpunk042.mcshaders.vanilla.fog;
 
 import net.cyberpunk042.mcshaders.BuiltinBackends;
+import net.cyberpunk042.mcshaders.diag.ChainCheck;
 import net.cyberpunk042.mcshaders.fog.FogSink;
 import net.minecraft.client.renderer.fog.FogData;
 
@@ -51,12 +52,19 @@ public final class FogApply {
         if (fog == null) {
             return;
         }
+        // Counted before the active check: "reached but never applied" and "never
+        // reached at all" have completely different causes, and only separate counters
+        // can tell them apart.
+        ChainCheck.fogReached();
+
         FogSink.Reading reading = BuiltinBackends.fog().current();
         if (!reading.active()) {
             // No fog layer in force this frame. Leave vanilla's values alone rather
             // than writing zeroes over them.
             return;
         }
+
+        ChainCheck.fogApplied();
 
         fog.renderDistanceStart = (float) reading.blend(fog.renderDistanceStart, reading.start());
         fog.renderDistanceEnd = (float) reading.blend(fog.renderDistanceEnd, reading.end());
