@@ -254,9 +254,13 @@ caveat as M2 applies — nobody has run it. What is *known* not to be covered is
 dedicated servers: bindings are `data/` content, so the reload is server-side, and
 on a dedicated server it fills a registry in a JVM that renders nothing. Singleplayer
 and LAN share a JVM and are what this milestone's done-when describes. Syncing a
-server's bindings to its clients is unwritten and is not claimed. NeoForge has no
-listener yet either — the vanilla half is loader-neutral, but `ResourceLoader` is
-Fabric API and `common` has no Minecraft dependency to host the shared part in.
+server's bindings to its clients is unwritten and is not claimed.
+
+**Both loaders now have one.** The shared vanilla work lives in a `vanilla/` module —
+vanilla Minecraft, no loader API — so Fabric and NeoForge each carry a two-line
+adapter rather than a copy of the scan. That module is what `common` could not be:
+`common` is published as `mcshaders-api` and a Minecraft dependency would make it
+unusable outside the game.
 
 ## M4 — Demo dimensions
 

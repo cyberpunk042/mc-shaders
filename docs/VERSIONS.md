@@ -80,6 +80,7 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 | `mc_26_2_fabric_api` | `0.157.0+26.2` | **Verified in CI** | Modrinth version listing, published 2026-08-10 |
 | Fabric Loom plugin id | `net.fabricmc.fabric-loom` | **Verified in CI** | The legacy `fabric-loom` id resolved, then failed with "Failed to find official mojang mappings for 26.2". See below. |
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Verified in CI** | Started as the least confident value in the table, derived from the documented `26.2.0.x` prefix scheme; it resolved and built. Newer builds exist (the Maven listing shows at least `26.2.0.62`), so this is a deliberate pin, not the latest. |
+| `mc_26_2_neoform` | `26.2-2` | **Pending CI** | Read out of NeoForge 26.2.x's own build, which consumes `net.neoforged:neoform:${minecraft_version}-${neoform_version}` with `minecraft_version=26.2` and `neoform_version=2`. Gives the `vanilla` module Minecraft with no loader attached, via ModDevGradle's NeoForm mode. |
 | `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
 
 ## Cross-checked against a shipping 26.2 mod

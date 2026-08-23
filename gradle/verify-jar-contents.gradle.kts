@@ -25,6 +25,10 @@ val requiredClasses = listOf(
     "net/cyberpunk042/mcshaders/BuiltinEffects.class",
     "net/cyberpunk042/mcshaders/codec/BindingCodec.class",
     "net/cyberpunk042/mcshaders/core/ShaderPipeline.class",
+    // The `vanilla` module. It is a third jar-in-jar alongside common and core, so
+    // it can go missing exactly the way common did — and a missing BindingScan means
+    // /reload throws instead of loading bindings.
+    "net/cyberpunk042/mcshaders/vanilla/BindingScan.class",
 )
 
 // The datapack has the same problem the classes had, one layer over: it is

@@ -3,7 +3,8 @@
 //
 //   core/                 pure Java, zero Minecraft — its own standalone build
 //   check/                pure Java — reads shader packs and validates them
-//   common/               Minecraft-facing code shared by every loader
+//   common/               loader- AND Minecraft-free; published as mcshaders-api
+//   vanilla/              vanilla Minecraft, no loader API — shared by both loaders
 //   fabric/, neoforge/    per-loader entrypoints and packaging
 //
 // core/ and check/ are *included builds* rather than subprojects on purpose: they
@@ -61,5 +62,6 @@ includeBuild("core")
 includeBuild("check")
 
 include("common")
+include("vanilla")
 include("fabric")
 include("neoforge")

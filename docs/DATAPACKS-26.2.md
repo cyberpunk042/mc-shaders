@@ -104,7 +104,31 @@ server shares the client's JVM and it works. On a dedicated server the reload ru
 where nothing renders, and the connecting client never receives those files. Syncing
 them over the network is not written, and nothing here should read as though it were.
 
-**NeoForge.** The listener above is Fabric-only; `ResourceLoader` is Fabric API. The
-vanilla half — the lister, the converter, `openAsReader` — is loader-neutral and
-would be reused as-is, but it cannot live in `common`, which has no Minecraft
-dependency by design.
+*(NeoForge was listed here as uncovered. It no longer is — see below.)*
+
+## Both loaders, one copy of the work
+
+The vanilla half — the lister, the converter, `openAsReader` — is loader-neutral, but
+it could not live in `common`, which has no Minecraft dependency by design and is
+published as `mcshaders-api`. That left duplication as the only alternative, so a
+`vanilla/` module exists instead: vanilla Minecraft, no loader API, bundled into both
+loader jars the way `common` and `mcshaders-core` already are.
+
+| Loader | How a listener is registered |
+|---|---|
+| Fabric | `ResourceLoader.get(PackType.SERVER_DATA).registerReloadListener(Identifier, listener)` |
+| NeoForge | `AddServerReloadListenersEvent` → `event.addListener(Identifier, listener)`, subscribed on **`NeoForge.EVENT_BUS`** (the game bus, not the mod bus) |
+
+Both are two-line adapters over `BindingScan.reload(ResourceManager)`.
+
+**The NeoForge bus is the trap.** `AddServerReloadListenersEvent`'s own javadoc says
+it fires on `NeoForge.EVENT_BUS`; subscribing on the mod bus instead produces no
+error, just a listener that never runs.
+
+**How `vanilla/` gets Minecraft.** ModDevGradle in NeoForm mode — the same
+`net.neoforged.moddev` plugin the NeoForge module already uses, given `neoFormVersion`
+instead of `version`, which is its documented way to compile against Minecraft
+"without any loader-specific extensions". Using a NeoForge-adjacent toolchain for code
+Fabric also consumes is sound **only because 26.1+ ships unobfuscated**: no mappings,
+no remapping, so both plugins see the same real class names. On an obfuscated version
+this would have needed a remapping story instead.
