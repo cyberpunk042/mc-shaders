@@ -1,10 +1,13 @@
 package net.cyberpunk042.mcshaders.core.pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -299,6 +302,81 @@ class VertexPatternResolutionTest {
             }
         }
         assertTrue(outOfRange.isEmpty(), String.join("; ", outOfRange));
+    }
+
+    // =========================================================================
+    // Two claimants on one id namespace
+    // =========================================================================
+
+    /**
+     * The five {@code Dynamic*Pattern} records are a second implementation of what
+     * {@link ShufflePattern} already does, and they name themselves identically —
+     * {@code shuffle_<cellType>_<n>} for both. Nothing constructs one, so today the
+     * duplication is inert.
+     *
+     * <p>It is pinned rather than left as a surprise, because the day someone does
+     * construct one, this is what they will hit: the name will not resolve back to the
+     * record, because {@code fromString} reaches {@link ShufflePattern} first and both
+     * answer to the same string. The equivalent shadowing among the named patterns cost
+     * eight constants their reachability, and it was invisible for the same reason.
+     *
+     * <p>This asserts what is true now. It does not say which of the two should win —
+     * that is a decision about what the shuffle exploration is for, not a fact about
+     * the code.
+     */
+    @Test
+    void theDynamicRecordsNameThemselvesTheSameWayShufflePatternDoes() {
+        record Case(String label, VertexPattern dynamic, CellType cellType) { }
+        List<Case> cases = List.of(
+                new Case("quad", new DynamicQuadPattern(
+                        QuadPattern.FILLED_1.triangle1(), QuadPattern.FILLED_1.triangle2(), 0, "d"),
+                        CellType.QUAD),
+                new Case("triangle", new DynamicTrianglePattern(
+                        TrianglePattern.Vertex.values(), 1, 0, "d"), CellType.TRIANGLE));
+
+        for (Case c : cases) {
+            VertexPattern viaShuffle = ShufflePattern.fromPermutation(c.cellType(), 0);
+            assertNotNull(viaShuffle, "no permutation 0 for " + c.cellType());
+            assertEquals(viaShuffle.id(), c.dynamic().id(),
+                    c.label() + ": the two families should be shown to collide, or this "
+                            + "test has stopped describing the situation it was written for");
+
+            // ...and the name resolves to the reachable one, not the record.
+            VertexPattern resolved = VertexPattern.fromString(c.dynamic().id());
+            assertInstanceOf(ShufflePattern.class, resolved,
+                    c.label() + ": " + c.dynamic().id() + " resolved to " + describe(resolved));
+        }
+    }
+
+    /** Nothing builds one, which is the only reason the collision above is harmless. */
+    @Test
+    void nothingInTheEngineConstructsADynamicPattern() throws Exception {
+        Path mainSources = repoRoot().resolve("core/src/main/java");
+        List<String> constructors = new ArrayList<>();
+        try (var tree = Files.walk(mainSources)) {
+            for (Path f : tree.filter(p -> p.toString().endsWith(".java")).toList()) {
+                if (f.getFileName().toString().startsWith("Dynamic")) {
+                    continue;                         // its own declaration
+                }
+                String text = Files.readString(f);
+                if (text.contains("new Dynamic") && text.contains("Pattern(")) {
+                    constructors.add(mainSources.relativize(f).toString());
+                }
+            }
+        }
+        assertTrue(constructors.isEmpty(),
+                "something now builds a Dynamic*Pattern, so the id collision with "
+                        + "ShufflePattern is live rather than latent: " + constructors);
+    }
+
+    private static Path repoRoot() {
+        for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
+            if (Files.isRegularFile(dir.resolve("LICENSE"))
+                    && Files.isDirectory(dir.resolve("core/src/main/java"))) {
+                return dir;
+            }
+        }
+        throw new AssertionError("could not find the repository root");
     }
 
     private static String describe(VertexPattern pattern) {
