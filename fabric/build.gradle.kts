@@ -33,6 +33,10 @@ dependencies {
     implementation(project(":common"))
     include(project(":common"))
 
+    // Same pair, same reason: vanilla Minecraft code shared with NeoForge.
+    implementation(project(":vanilla"))
+    include(project(":vanilla"))
+
     // Bundled rather than depended upon: the core is our own code with no
     // independent release cycle, so shipping it inside the jar spares users a
     // second download.

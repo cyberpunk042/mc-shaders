@@ -31,6 +31,10 @@ dependencies {
     implementation(project(":common"))
     jarJar(project(":common"))
 
+    // Same pair, same reason: vanilla Minecraft code shared with Fabric.
+    implementation(project(":vanilla"))
+    jarJar(project(":vanilla"))
+
     jarJar("net.cyberpunk042:mcshaders-core:$coreVersion")
 }
 

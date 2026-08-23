@@ -254,9 +254,13 @@ caveat as M2 applies — nobody has run it. What is *known* not to be covered is
 dedicated servers: bindings are `data/` content, so the reload is server-side, and
 on a dedicated server it fills a registry in a JVM that renders nothing. Singleplayer
 and LAN share a JVM and are what this milestone's done-when describes. Syncing a
-server's bindings to its clients is unwritten and is not claimed. NeoForge has no
-listener yet either — the vanilla half is loader-neutral, but `ResourceLoader` is
-Fabric API and `common` has no Minecraft dependency to host the shared part in.
+server's bindings to its clients is unwritten and is not claimed.
+
+**Both loaders now have one.** The shared vanilla work lives in a `vanilla/` module —
+vanilla Minecraft, no loader API — so Fabric and NeoForge each carry a two-line
+adapter rather than a copy of the scan. That module is what `common` could not be:
+`common` is published as `mcshaders-api` and a Minecraft dependency would make it
+unusable outside the game.
 
 ## M4 — Demo dimensions
 
@@ -291,9 +295,15 @@ selection is invisible to pack authors.
 - ~~**Pin the versions.**~~ Done 2026-08-21 — the loaders job went green, pinning
   the whole table, and is now blocking. See [VERSIONS.md](VERSIONS.md).
 - **Gradle 10 readiness.** The loader build reports "Deprecated Gradle features
-  were used in this build, making it incompatible with Gradle 10." Worth a pass
-  with `--warning-mode all` to see whether it is our scripts or the Loom/MDG
-  plugins; if it is theirs, this waits on their updates.
+  were used in this build, making it incompatible with Gradle 10." Half answered:
+  `core` and `check` — the two included builds, which use no third-party plugins —
+  are **clean** under `--warning-mode all` on Gradle 9.5.1. So nothing in the pure-Java
+  half is the cause, and it is the root build that carries it.
+  Localising it further to our scripts vs Loom/MDG needs a machine with **both** JDK 25
+  and network access to the Fabric and NeoForged Maven hosts: the root build's
+  toolchain is 25, and `fabric/build.gradle.kts` cannot even be *configured* offline
+  because Loom is unresolvable. If it turns out to be the plugins', this waits on
+  their updates.
 - **Consider a newer NeoForge build.** `26.2.0.35-beta` is pinned and works, but
   newer builds exist.
 - **Wire multiversion** once 26.3 ships and the loader build is green. The

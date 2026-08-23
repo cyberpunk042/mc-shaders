@@ -1,6 +1,7 @@
 package net.cyberpunk042.mcshaders.neoforge;
 
 import net.cyberpunk042.mcshaders.McShaders;
+import net.cyberpunk042.mcshaders.neoforge.data.BindingReloadListener;
 import net.neoforged.fml.common.Mod;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,5 +20,9 @@ public final class McShadersNeoForge {
 
     public McShadersNeoForge() {
         McShaders.init(LOGGER::info);
+
+        // Datapack reload. The vanilla work is shared with Fabric in BindingScan;
+        // only the registration differs, and NeoForge's is an event on the game bus.
+        BindingReloadListener.register();
     }
 }
