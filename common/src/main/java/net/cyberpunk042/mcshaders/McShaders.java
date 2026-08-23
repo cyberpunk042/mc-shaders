@@ -56,6 +56,10 @@ public final class McShaders {
         // reading the registries mid-init should not see a look referring to
         // something that is not there yet.
         BuiltinBindings.register();
+        // Last, because a backend names the effect types it supports and those have
+        // to exist by then. Without this, selection falls through to NoOpBackend and
+        // every resolved effect is compiled and then discarded.
+        BuiltinBackends.register();
         log.accept(MOD_NAME + " common init — API " + McShadersAPI.API_VERSION);
     }
 

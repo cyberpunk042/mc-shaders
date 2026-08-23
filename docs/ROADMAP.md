@@ -189,8 +189,19 @@ Make it draw something.
 - `OpenGLBackend` implementing `EffectBackend`, registered through the same
   `BackendFactory` path third parties use — if the built-in renderer needs privileged
   access, that is a gap in the public API
-- Client render hook feeding `ShaderPipeline.frame()`
-- `WorldState` sampler pulling dimension, time, Y, weather, biome tags
+- ~~`OpenGLBackend` … registered through the same `BackendFactory` path~~ — **done
+  in shape, not in scope**: `fog.FogBackend` is registered that way and is the first
+  backend the mod contributes at all. Before it, selection always fell through to
+  `NoOpBackend`, so every resolved effect was compiled and discarded. It renders
+  nothing itself, which is what fog *is* on this platform: vanilla owns the fog and a
+  mod's part is to change the numbers it is about to use
+- Client render hook feeding `ShaderPipeline.frame()` — the hook is established as
+  `LevelExtractionEvents.END_EXTRACTION`, **not** `START_MAIN`, and not the
+  `WorldRenderEvents` that no longer exists. See [RENDERING-26.2.md](RENDERING-26.2.md)
+- `WorldState` sampler pulling dimension, time, Y, weather, biome tags — **five of
+  six are verified; time of day is not**. `Level#getDayTime()` does not exist on 26.2
+  and no client accessor for its replacement was found, so `Condition.TimeOfDay`
+  cannot yet be evaluated. A sampler must say so rather than quietly reporting noon
 - Backend selection with graceful fallback to `NoOpBackend`
 
 **Done when:** a hardcoded fog binding visibly changes the frame in-game.
