@@ -1,0 +1,23 @@
+{
+  "id": "overworld_forest",
+  "dimension": "minecraft:overworld",
+  "priority": 10,
+  "condition": { "type": "biome_tag", "tag": "#minecraft:is_forest" },
+  "stack": {
+    "layers": [
+      {
+        "id": "atmosphere",
+        "kind": "fog",
+        "type": "mcshaders:fog",
+        "blend": "alpha",
+        "weight": 1.0,
+        "priority": 0,
+        "params": {
+          "start": 24.0,
+          "end": 112.0,
+          "color": { "r": 0.596, "g": 0.678, "b": 0.612, "a": 1.0 }
+        }
+      }
+    ]
+  }
+}

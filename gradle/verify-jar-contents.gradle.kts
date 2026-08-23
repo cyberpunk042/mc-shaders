@@ -45,6 +45,8 @@ val requiredResources = listOf(
     "data/mcshaders/dimension/beyond.json",
     "data/mcshaders/dimension_type/beyond.json",
     "data/mcshaders/mcshaders/bindings/beyond_depths.json",
+    "data/mcshaders/mcshaders/bindings/overworld_weather.json",
+    "data/mcshaders/mcshaders/bindings/overworld_forest.json",
 )
 
 val verifyJarContents = tasks.register("verifyJarContents") {

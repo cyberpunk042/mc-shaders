@@ -290,8 +290,32 @@ Prove the framework with content.
 
 - Two dimensions with distinct visual identities, built entirely on M3's
   datapack format — no privileged access
-- Custom sky, fog and colour grading per dimension
+- ~~Custom sky, fog and colour grading per dimension~~ — **fog only, and that is not a
+  shortcut**: fog is the one effect with a backend, so it is the only thing a
+  dimension's look can currently consist of. Sky and colour grading wait on their own
+  backends rather than on this milestone
 - Portal transitions exercising the blend path
+
+**Second look shipped, on a vanilla dimension.** `overworld_weather.json` restyles
+`minecraft:overworld` — far pale air normally, closing in during rain or thunder,
+suppressed underwater where water owns the fog. It is on a vanilla dimension
+deliberately: that needs no custom dimension type, so it is the thing a pack author
+is likeliest to want first, and it proves the format on a dimension the framework
+does not own.
+
+It also exercises the format past the one condition type `beyond_depths` used. That
+file is `y_range` alone; the overworld pair nests `all` / `any` / `not` over `weather`
+and `submerged`, and `overworld_forest.json` adds `biome_tag` — leaving only
+`time_of_day` unused, deliberately, since it cannot be read on 26.2. Every one travels
+through `BindingCodec` in `PackDimensionsTest` rather than a hand-built fixture — so a field name that does not
+match the codec fails a test rather than failing quietly in someone's world. Writing
+it caught exactly that: `all`/`any`/`not` take `of`, not `conditions`.
+
+**A second demo dimension is still missing**, and deliberately so: authoring its
+`dimension_type` means values (`skybox`, `timelines`, `cardinal_light`) that cannot be
+checked against any 26.2 source available here, and an invalid one fails at pack load
+with the dimension silently absent. Better to ship a look that is verified than a
+dimension that might not exist.
 
 **Done when:** the demo dimensions use nothing a third-party pack could not.
 If they need a private API, that is a bug in the framework, not the demo.
