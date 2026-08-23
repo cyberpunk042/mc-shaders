@@ -79,25 +79,30 @@ public final class ShapeRegistry {
     /**
      * Creates a shape by name with parameters.
      * 
+     * <p>Null means <strong>no shape by that name</strong>, and nothing else. A factory
+     * that fails is allowed to throw, which is a change: this used to catch every
+     * exception and return null, so a bad parameter and an unknown name were the same
+     * answer, with no way to tell which had happened and nothing logged.
+     *
+     * <p>The empty blocks that catch left behind are where the log calls stood before
+     * the port — they could not come across, because {@code core} has no logger and is
+     * not going to acquire one. Swallowing silently is the worse half of that trade, so
+     * the exception travels instead.
+     *
      * @param name Shape name
      * @param params Shape parameters
-     * @return The shape, or null if not found
+     * @return the shape, or null if no shape is registered under that name
+     * @throws IllegalArgumentException if the name is null
      */
     public static Shape create(String name, Map<String, Object> params) {
+        if (name == null) {
+            throw new IllegalArgumentException("Cannot create a shape from a null name");
+        }
         ShapeFactory factory = FACTORIES.get(name.toLowerCase());
         if (factory == null) {
-
             return null;
         }
-        
-        try {
-            Shape shape = factory.create(params);
-
-            return shape;
-        } catch (Exception e) {
-
-            return null;
-        }
+        return factory.create(params);
     }
     
     /**

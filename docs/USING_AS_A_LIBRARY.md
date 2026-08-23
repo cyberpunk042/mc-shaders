@@ -96,6 +96,14 @@ McShadersAPI.registerBinding(new DimensionBinding(
 
 `haze` from the base binding survives untouched; only `grade` is overridden.
 
+> **`TimeOfDay` cannot activate on 26.2.** `Level#getDayTime()` is gone and no client
+> accessor for its replacement has been found, so the sampler reports the time as
+> unreadable and a `TimeOfDay` condition is never true. A binding gated on it does
+> nothing, and looks exactly like a typo. The mod logs which bindings this affects at
+> startup (`SamplingGaps`), but until a reader is found, gate on `YRange`, `InWeather`,
+> `HasBiomeTag` or `Submerged` instead. The example above is otherwise correct — swap
+> the condition.
+
 ## Contributing a new effect type
 
 An effect type is a declaration: an id, defaults, and what a backend must be able to
@@ -273,6 +281,9 @@ a flat map says which of forty numbers belong together, what any is called, or w
 a sane value looks like. `core.schema` says that, and holds no values itself, so
 one description drives a screen in the game, a web page, or a command line.
 
+`ParamSpec` lives in `core.schema` alongside `EffectSchema` — not in `core.param`,
+where the rest of the value vocabulary is.
+
 ```java
 EffectSchema schema = EffectSchema.builder("Energy Orb", "energy_orb", 1)
         .group("Core",
@@ -295,6 +306,25 @@ editor that cannot round-trip its own starting value.
 to describe — a control bound to a key nothing carries does nothing when dragged, a
 parameter no control reaches cannot be edited, and a shipped default outside its own
 declared range changes the first time someone opens the panel and closes it again.
+
+## Making it reachable from the editor
+
+Building a schema does not make anything editable. The in-game editor reads
+`McShadersAPI.schemas()`, so a schema nobody registered describes an effect that never
+appears in it — perfectly formed and entirely invisible.
+
+```java
+McShadersAPI.registerSchema("mymod:kaleidoscope", schema);
+```
+
+Keyed by **effect type**, not by the schema's own id: the editor is answering "what is
+tunable about this effect", and that question needs the type as its key. Registering a
+second schema for a type already described is refused, for the same reason a colliding
+effect id is.
+
+Like every other `registerX`, this closes with registration. `McShadersAPI.isRegistrationOpen()`
+answers whether you are still in time, if you would rather branch than catch
+`IllegalStateException`.
 
 ## Editing a set of values
 
