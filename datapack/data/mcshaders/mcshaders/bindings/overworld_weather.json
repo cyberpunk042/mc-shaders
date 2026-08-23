@@ -1,0 +1,83 @@
+[
+  {
+    "id": "overworld_air",
+    "dimension": "minecraft:overworld",
+    "priority": 0,
+    "condition": {
+      "type": "always"
+    },
+    "stack": {
+      "layers": [
+        {
+          "id": "atmosphere",
+          "kind": "fog",
+          "type": "mcshaders:fog",
+          "blend": "alpha",
+          "weight": 1.0,
+          "priority": 0,
+          "params": {
+            "start": 48.0,
+            "end": 192.0,
+            "color": {
+              "r": 0.686,
+              "g": 0.761,
+              "b": 0.831,
+              "a": 1.0
+            }
+          }
+        }
+      ]
+    }
+  },
+  {
+    "id": "overworld_storm",
+    "dimension": "minecraft:overworld",
+    "priority": 20,
+    "condition": {
+      "type": "all",
+      "of": [
+        {
+          "type": "any",
+          "of": [
+            {
+              "type": "weather",
+              "weather": "rain"
+            },
+            {
+              "type": "weather",
+              "weather": "thunder"
+            }
+          ]
+        },
+        {
+          "type": "not",
+          "of": {
+            "type": "submerged"
+          }
+        }
+      ]
+    },
+    "stack": {
+      "layers": [
+        {
+          "id": "atmosphere",
+          "kind": "fog",
+          "type": "mcshaders:fog",
+          "blend": "alpha",
+          "weight": 1.0,
+          "priority": 0,
+          "params": {
+            "start": 8.0,
+            "end": 56.0,
+            "color": {
+              "r": 0.325,
+              "g": 0.361,
+              "b": 0.404,
+              "a": 1.0
+            }
+          }
+        }
+      ]
+    }
+  }
+]
