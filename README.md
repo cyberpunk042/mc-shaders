@@ -47,8 +47,9 @@ of it tested; **none of it drawn yet**, because no renderer consumes a mesh. See
 And a **checker** that validates shader packs without the game, which works today and
 needs neither half.
 
-**The effects this exists to carry forward** — the sun (`field_visual_v1`…`v8`, with
-god-rays HDR variants), `magic_circle`, the shockwaves — are 21 post-processing chains in
+**The effects this exists to carry forward** — the sun (`field_visual_v7`, the
+Panteleymonov Sun; `v6` the pulsar before it, `v8` the electric aura forked from it, each
+with a god-rays HDR twin), `magic_circle`, the shockwaves — are 21 post-processing chains in
 [`the-virus-block-mc`](https://github.com/cyberpunk042/the-virus-block-mc), catalogued by
 name in [EFFECTS.md](docs/EFFECTS.md). **None are ported yet**, and nothing here can run
 one — that needs the chain runtime, and reversed-Z makes every depth-reading shader a

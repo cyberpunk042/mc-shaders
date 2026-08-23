@@ -36,16 +36,36 @@ Its parameter block says what it is better than prose can — from the mod's own
 
 ### The versions
 
-| Chain | Passes | Fragment shader | Shape |
-|---|---|---|---|
-| `field_visual_v1` · `v2` · `v3` | 2 | `post/field_visual_vN` | effect, then blit |
-| `field_visual_v5` · `v6` · `v7` · `v8` | 2 | `post/field_visual_vN` | effect, then blit |
-| `field_visual_v5_hdr` · `v6_hdr` · `v7_hdr` · `v8_hdr` | **7** | `post/hdr/field_visual_vN_hdr` | effect → blit → god-rays mask → accumulate → blur → blur → composite |
-| `field_visual_geodesic` | 2 | `post/field_visual_geodesic` | a different field, same block |
-| `field_visual_v7_hdr_full` | 2 | `post/field_visual_v7` | **see below** |
+Each shader says what it is in its own header. These are not iterations of one effect so
+much as **a line of different ones**, and the later they get the more specific they are:
+
+| Chain | What its own header calls it |
+|---|---|
+| `field_visual_v1` | Basic Raymarched Energy Orb |
+| `field_visual_v2` | Shadertoy Energy Orb |
+| `field_visual_v3` | Raymarched Energy Orb |
+| `field_visual_v5` | Pulsar Projected |
+| `field_visual_v6` | **Raymarched Pulsar** |
+| `field_visual_v7` | **Panteleymonov Sun** |
+| `field_visual_v8` | **Electric Aura** — *"forked from V7 (Panteleymonov Sun). New: electric plasma rays with pulsating rings, ground transposition"* |
+| `field_visual_geodesic` | Animated Geodesic Sphere |
+
+So the sun proper is **v7**, v6 is the pulsar it came after, and v8 is v7 forked toward
+something electric rather than solar. That lineage is worth knowing before choosing which
+one to port: they are siblings, not supersessions, and v8 says so in its own first lines.
 
 **There is no v4.** The sequence goes v1, v2, v3, v5 — nothing named v4 exists anywhere
 in the tree.
+
+Each of `v5` `v6` `v7` `v8` also has an HDR twin, which is the same effect with **ray
+values above 1.0 preserved** rather than clamped — that is what the god-rays passes
+consume:
+
+| Chain | Passes | Fragment shader |
+|---|---|---|
+| the eight above | 2 | `post/field_visual_*` — effect, then blit |
+| `field_visual_v5_hdr` · `v6_hdr` · `v7_hdr` · `v8_hdr` | **7** | `post/hdr/field_visual_*_hdr` — effect → blit → god-rays mask → accumulate → blur → blur → composite |
+| `field_visual_v7_hdr_full` | 2 | `post/field_visual_v7` — **see below** |
 
 **The HDR variants are the god-rays pipeline.** Seven passes: the field is rendered, a
 mask is built from it, the rays are accumulated, blurred twice, and composited back. That
