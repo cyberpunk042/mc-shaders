@@ -194,6 +194,14 @@ Make it draw something.
 - Because of that split, the fog binding is the part of this milestone that is
   unblocked — and it is what the done-when below actually asks for. The full
   chain is not
+- **What the chain half unblocks is worth naming**, because it is the difference between
+  a framework for routing looks and a framework anyone can bring a shader to. With it, a
+  pack author adds a chain JSON and a `.fsh` to a resource pack and names it from a
+  binding — no Java. Without it, contributing a renderer means writing one: the backend
+  seam is real and unprivileged, but a backend is Java that draws, and nothing here loads
+  shader source. The offline half already exists and is tested — `core.glsl` include
+  resolution, `core.chain`, `core.layout` std140, and `check/` over all three. What is
+  missing is the runtime that executes them
 - `OpenGLBackend` implementing `EffectBackend`, registered through the same
   `BackendFactory` path third parties use — if the built-in renderer needs privileged
   access, that is a gap in the public API
