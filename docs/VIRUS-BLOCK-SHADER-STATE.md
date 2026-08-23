@@ -18,6 +18,9 @@ checker had three defects of its own that this exercise found, so its output is 
 taken on faith. See the commit *"Make the layout check model std140, after running it on
 real shaders"* for what those were.
 
+For what each chain *is* — the sun by version, `magic_circle`, the shockwaves — see
+[EFFECTS.md](EFFECTS.md). This page is the state; that one is the catalogue.
+
 ## The headline
 
 **21 chains. 19 have errors. Every shader compiles.**
