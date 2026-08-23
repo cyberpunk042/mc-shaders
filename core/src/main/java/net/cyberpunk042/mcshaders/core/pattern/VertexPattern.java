@@ -104,16 +104,26 @@ public interface VertexPattern {
     // =========================================================================
     
     /**
-     * Parses any pattern from string, auto-detecting type.
+     * Parses a pattern from a name alone, guessing which family it belongs to.
+     *
+     * <p><b>Prefer {@link #resolveForCellType(String, CellType)} wherever the cell type is
+     * known.</b> A name on its own cannot always identify a pattern: five ids are declared by
+     * more than one family, and this method takes the first family that claims one, in a fixed
+     * order (quad, segment, sector, edge, triangle, then the {@code shuffle_<cellType>_<n>}
+     * names, which spell their cell type out and so are never ambiguous). That means
+     * {@code "full"}, {@code "alternating"}, {@code "sparse"}, {@code "quarter"} and
+     * {@code "dashed"} always yield the segment pattern, and eight constants &mdash; among them
+     * {@code TrianglePattern.FULL}, {@code EdgePattern.FULL} and {@code SectorPattern.FULL}
+     * &mdash; cannot be reached through this method at all.
+     *
+     * <p>That matters because vertex indices mean different things per cell type (see
+     * {@link #getVertexOrder()}). A pattern from the wrong family does not merely carry the wrong
+     * label: used on a quad, a sector or triangle pattern covers half of it and an edge pattern
+     * draws nothing, both silently.
+     *
      * @param value Pattern name (e.g., "filled_1", "spiral", "alternating")
-     * @return The pattern, or QuadPattern.DEFAULT if not found
-     */
-    /**
-     * Parses any pattern from string, auto-detecting type.
-     * <p>If the pattern is not found, logs an error and returns QuadPattern.DEFAULT.</p>
-     * 
-     * @param value Pattern name (e.g., "filled_1", "spiral", "alternating")
-     * @return The pattern, or QuadPattern.DEFAULT if not found
+     * @return The pattern, or {@code QuadPattern.DEFAULT} if the name matches nothing.
+     *         Never {@code null}, and never reports that the name was unrecognised.
      */
     static VertexPattern fromString(String value) {
         if (value == null || value.isEmpty()) {
@@ -142,8 +152,8 @@ public interface VertexPattern {
         pattern = ShufflePattern.parse(value);
         if (pattern != null) return pattern;
         
-        // Pattern not found - log error and notify player
-        
+        // Unrecognised. There is no channel to report it on from here, so this is
+        // indistinguishable to the caller from an explicit "filled_1".
         return QuadPattern.DEFAULT;
     }
     

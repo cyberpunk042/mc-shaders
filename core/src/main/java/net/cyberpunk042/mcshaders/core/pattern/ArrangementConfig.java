@@ -112,12 +112,15 @@ public record ArrangementConfig(
     }
     
     /**
-     * Resolves the pattern for a part to an actual VertexPattern.
-     * <p><b>Warning:</b> Does not validate CellType compatibility.
-     * Use {@link #resolvePattern(String, CellType)} for validated resolution.</p>
-     * 
+     * Resolves the pattern for a part without knowing what cell it is for.
+     *
+     * <p><b>Prefer {@link #resolvePattern(String, CellType)}.</b> This overload guesses the
+     * family from the name alone, so it can return a pattern written for a different kind of
+     * cell, whose vertex indices then mean something other than what the consumer reads them
+     * as. {@link VertexPattern#fromString(String)} sets out exactly when that happens.
+     *
      * @param partName The part name
-     * @return The VertexPattern for that part
+     * @return The VertexPattern for that part, of no guaranteed cell type. Never {@code null}.
      */
     public VertexPattern resolvePattern(String partName) {
         String patternName = getPattern(partName);
@@ -125,13 +128,20 @@ public record ArrangementConfig(
     }
     
     /**
-     * Resolves the pattern for a part with CellType validation.
-     * <p>If the pattern's CellType doesn't match the expected type,
-     * logs an error to chat and returns null (caller should skip rendering).</p>
-     * 
+     * Resolves the pattern for a part, for the kind of cell it will be used on.
+     *
+     * <p>This is the overload to reach for. Supplying the cell type is what lets a name be
+     * resolved within the family that means it, rather than whichever family happens to claim
+     * the name first &mdash; see {@link VertexPattern#fromString(String)} for what that costs.
+     *
+     * <p>A name that names nothing in this cell type's family, or names a pattern belonging to
+     * another one, resolves to {@link VertexPattern#defaultForCellType} for the expected type.
+     * The substitution is silent: {@code core} carries no logging or chat, so there is nothing
+     * here to report it on.
+     *
      * @param partName The part name
      * @param expectedCellType The CellType the shape expects
-     * @return The VertexPattern, or null if incompatible
+     * @return A pattern whose {@code cellType()} is {@code expectedCellType}. Never {@code null}.
      * @see VertexPattern#resolveForCellType(String, CellType)
      */
     public VertexPattern resolvePattern(String partName, CellType expectedCellType) {
