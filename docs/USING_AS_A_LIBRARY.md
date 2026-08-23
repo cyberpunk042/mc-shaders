@@ -34,6 +34,22 @@ dependencies {
 
 Put `gpr.user` and `gpr.key` in `~/.gradle/gradle.properties`, never in the repo.
 
+> **Nothing is published yet.** The publish job runs on a published GitHub release and
+> there has not been one, so those coordinates will not resolve today — and because the
+> repository requires a token to read, the failure looks like an authentication problem
+> rather than an absent artifact. That is worth knowing before you spend an evening on
+> your credentials.
+>
+> Until the first release, build them yourself into the local Maven repository and add
+> `mavenLocal()` to your `repositories`:
+>
+> ```sh
+> cd core && ../gradlew publishToMavenLocal      # mcshaders-core, JDK 21
+> ./gradlew :common:publishToMavenLocal --configure-on-demand   # mcshaders-api, JDK 25
+> ```
+>
+> Both publish the same versions named below, so nothing else in this guide changes.
+
 ## What is stable
 
 Types marked `@Stable` do not break within a major version. Types marked

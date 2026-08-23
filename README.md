@@ -70,7 +70,7 @@ status above can be as specific as it is.
 | **Loaders** | Fabric and NeoForge, at parity |
 | **Java** | 25 for the mod, 21 for the framework core |
 | **Gradle** | 9.5.1, pinned in the committed wrapper |
-| **Artifacts** | `mcshaders-core`, `mcshaders-api`, `mcshaders-check` |
+| **Artifacts** | `mcshaders-core`, `mcshaders-api`, `mcshaders-check` — on release; none published yet |
 
 Minecraft coordinates are looked up per version from `gradle.properties`, so retargeting
 is one property change rather than a build-script edit. Version provenance — including

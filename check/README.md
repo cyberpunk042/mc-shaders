@@ -1,11 +1,16 @@
 # `check/` — a shader-pack checker that needs no game
 
-Published as **`net.cyberpunk042:mcshaders-check`**. Runs on any pack, including ones
-that have nothing to do with this mod.
+Runs on any pack, including ones that have nothing to do with this mod.
 
 ```sh
 cd check && ../gradlew run --args="/path/to/assets"
 ```
+
+That is the way to run it today. It **will** be published as
+**`net.cyberpunk042:mcshaders-check`** — the build produces a runnable distribution
+(`bin/mcshaders-check`, launch scripts and dependencies) and the release job pushes it —
+but no release has been cut, so nothing is on GitHub Packages yet. `../gradlew installDist`
+gives you the same distribution locally in the meantime.
 
 ## The problem it solves
 
