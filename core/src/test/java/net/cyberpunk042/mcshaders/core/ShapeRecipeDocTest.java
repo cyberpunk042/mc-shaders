@@ -28,9 +28,9 @@ import org.junit.jupiter.api.Test;
  * Builds the two worked examples printed in {@code docs/SHAPES.md}.
  *
  * <p>A capability page is the easiest kind of document to write dishonestly: naming
- * the parts is not the same as showing they assemble. A sun and a magic circle are
- * the two things a reader will picture first, and neither exists as a type — they are
- * compositions, which is exactly the claim worth executing rather than asserting.
+ * the parts is not the same as showing they assemble. The two examples are the shapes a reader
+ * pictures first, and neither exists as a type — they are compositions, which is exactly
+ * the claim worth executing rather than asserting.
  *
  * <p>What this proves is that the models compose and tessellate. It does not prove
  * anything appears on screen, and cannot: nothing outside {@code core} consumes a
@@ -43,7 +43,8 @@ class ShapeRecipeDocTest {
     @DisplayName("the sun recipe assembles and both of its parts tessellate")
     void sunRecipeBuilds() {
         // ── begin SHAPES.md sun ───────────────────────────────────────────────
-        // A sun is not a type. It is a glowing, pulsing core with a corona of rays.
+        // A glowing, pulsing core with a corona of rays. Not the field_visual chains
+        // of the same idea — those are post-processing; see docs/EFFECTS.md.
         SphereShape body = SphereShape.of(1.0f);
         Primitive core = SimplePrimitive.of("core", body.getType(), body)
                 .withAppearance(Appearance.glowing("#ffd27f", 0.9f))
@@ -66,7 +67,8 @@ class ShapeRecipeDocTest {
     @DisplayName("the magic-circle recipe assembles and every ring tessellates")
     void magicCircleRecipeBuilds() {
         // ── begin SHAPES.md magic circle ──────────────────────────────────────
-        // A magic circle is concentric rings turning against each other.
+        // Concentric rings turning against each other. Not the magic_circle chain,
+        // which is a raymarched field — see docs/EFFECTS.md.
         RingShape outerRing = RingShape.at(1.40f, 1.50f, 0f);
         Primitive outer = SimplePrimitive.of("outer", outerRing.getType(), outerRing)
                 .withAppearance(Appearance.glowing("#8fd3ff", 0.8f))

@@ -2,7 +2,10 @@
 
 This is the geometry half of the project. [SHADERS.md](SHADERS.md) covers looks applied
 to the whole screen — fog, colour grading, post-processing. This page covers **things
-with a form**: a sun, a magic circle, a beam, a cage.
+with a form**: a beam, a cage, a ring, a shell.
+
+For the *effects* — the sun, the magic circle, the shockwaves, by name and version — see
+[EFFECTS.md](EFFECTS.md). Those are post-processing chains and a separate mechanism.
 
 > **Read this first.** Everything below is **built and tested — and nothing draws it
 > yet.** The shapes tessellate, the models compose, the maths is under test. But no
@@ -51,12 +54,18 @@ There is also an **energy** model — flicker, travel, radiative interaction —
 
 ## Two worked examples
 
-Neither a sun nor a magic circle is a type. Both are compositions, which is the point:
-the catalogue is small and the combinations are not. **Both examples below are executed
-by a test**, so they are known to assemble and tessellate rather than merely look
-plausible.
+> **These are geometry, not the effects of the same name.** `the-virus-block-mc` has real
+> chains called `field_visual_v6`, `field_visual_v7` and `magic_circle`, and they are
+> **fullscreen post-processing** — a field raymarched in screen space against the depth
+> buffer. They are catalogued in [EFFECTS.md](EFFECTS.md). What follows builds the same
+> *ideas* out of meshes, which is a different mechanism with a different look. Neither is
+> a port of the other, and neither is drawn yet.
 
-### A sun
+Composed rather than named: no type here is a sun or a circle, and that is the point —
+the catalogue is small and the combinations are not. **Both examples are executed by a
+test**, so they assemble and tessellate rather than merely look plausible.
+
+### A glowing core with a corona
 
 A glowing, pulsing core with a corona of rays turning slowly around it.
 
@@ -77,10 +86,10 @@ FieldLayer sun = FieldLayer.of("sun", List.of(core, corona));
 `RaysShape` also ships `ABSORPTION`, `LASER_GRID` and `PULSE` presets, so the same two
 lines give you an implosion or a beam array instead.
 
-### A magic circle
+### Counter-turning rings
 
-Concentric rings turning against each other — the counter-rotation is what makes it
-read as a sigil rather than a hoop.
+Concentric rings turning against each other — the counter-rotation is what makes it read
+as a sigil rather than a hoop.
 
 ```java
 RingShape outerRing = RingShape.at(1.40f, 1.50f, 0f);
