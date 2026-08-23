@@ -80,8 +80,15 @@ class PackDimensionsTest {
     }
 
     private static WorldState overworld(Weather weather, boolean submerged) {
-        return new WorldState(OVERWORLD, WorldState.UNKNOWN_DAY_TIME, 64.0, weather, java.util.Set.of(), submerged);
+        return overworld(weather, submerged, java.util.Set.of());
     }
+
+    private static WorldState overworld(Weather weather, boolean submerged, java.util.Set<String> biomeTags) {
+        return new WorldState(OVERWORLD, WorldState.UNKNOWN_DAY_TIME, 64.0, weather, biomeTags, submerged);
+    }
+
+    /** As the sampler reports them: the full id, with no leading '#'. */
+    private static final java.util.Set<String> FOREST = java.util.Set.of("minecraft:is_forest");
 
     private static double fogEnd(EffectStack stack) {
         EffectLayer layer = stack.layers().get(0);
@@ -97,8 +104,8 @@ class PackDimensionsTest {
         void packIsClean() {
             BindingRegistry registry = loadPack();
 
-            assertTrue(registry.size() >= 3,
-                    "expected beyond_depths plus the two overworld bindings, got " + registry.size());
+            assertTrue(registry.size() >= 4,
+                    "expected beyond_depths plus the three overworld bindings, got " + registry.size());
         }
 
         @Test
@@ -116,6 +123,7 @@ class PackDimensionsTest {
             assertTrue(conditions.contains("InWeather"), "weather should be exercised");
             assertTrue(conditions.contains("Not"), "not should be exercised");
             assertTrue(conditions.contains("Submerged"), "submerged should be exercised");
+            assertTrue(conditions.contains("HasBiomeTag"), "biome_tag should be exercised");
         }
     }
 
@@ -183,6 +191,32 @@ class PackDimensionsTest {
             assertTrue(storm > base,
                     "the storm must override the base by priority (" + storm + " vs " + base
                             + "), or it only works while the names sort favourably");
+        }
+
+        @Test
+        @DisplayName("a forest gets its own haze, matched by a tag written with a leading '#'")
+        void forestHaze() {
+            // The pack writes "#minecraft:is_forest" the way a pack author would; the
+            // sampler reports "minecraft:is_forest" with no '#'. HasBiomeTag strips it,
+            // and this is the only place that round trip is exercised end to end.
+            EffectStack plain = loadPack().resolve(overworld(Weather.CLEAR, false));
+            EffectStack forest = loadPack().resolve(overworld(Weather.CLEAR, false, FOREST));
+
+            assertNotEquals(fogEnd(plain), fogEnd(forest), "the forest look should differ");
+            assertEquals(112.0, fogEnd(forest), 0.001);
+        }
+
+        @Test
+        @DisplayName("a storm in a forest is still a storm — three priorities, one layer")
+        void stormBeatsForest() {
+            // base 0 < forest 10 < storm 20, all writing `atmosphere`. If priorities
+            // were ignored the highest-numbered would not necessarily win.
+            EffectStack stormyForest = loadPack().resolve(overworld(Weather.THUNDER, false, FOREST));
+            EffectStack stormyPlain = loadPack().resolve(overworld(Weather.THUNDER, false));
+
+            assertEquals(1, stormyForest.layers().size());
+            assertEquals(fogEnd(stormyPlain), fogEnd(stormyForest), 0.001,
+                    "the storm should override the forest haze, not blend with it");
         }
 
         @Test

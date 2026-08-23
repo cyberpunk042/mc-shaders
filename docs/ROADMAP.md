@@ -304,9 +304,10 @@ is likeliest to want first, and it proves the format on a dimension the framewor
 does not own.
 
 It also exercises the format past the one condition type `beyond_depths` used. That
-file is `y_range` alone; this one nests `all` / `any` / `not` over `weather` and
-`submerged`, and every one of them travels through `BindingCodec` in
-`PackDimensionsTest` rather than a hand-built fixture — so a field name that does not
+file is `y_range` alone; the overworld pair nests `all` / `any` / `not` over `weather`
+and `submerged`, and `overworld_forest.json` adds `biome_tag` — leaving only
+`time_of_day` unused, deliberately, since it cannot be read on 26.2. Every one travels
+through `BindingCodec` in `PackDimensionsTest` rather than a hand-built fixture — so a field name that does not
 match the codec fails a test rather than failing quietly in someone's world. Writing
 it caught exactly that: `all`/`any`/`not` take `of`, not `conditions`.
 
