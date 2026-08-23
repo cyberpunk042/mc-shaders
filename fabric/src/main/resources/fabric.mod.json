@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "id": "mcshaders",
   "version": "${version}",
-  "name": "MC Shaders",
+  "name": "MC Shaders++",
   "description": "A dimension-aware shader effect framework for Minecraft. Binds backend-neutral visual effects to dimensions, with smooth transitions between them.",
   "authors": [
     "cyberpunk042"

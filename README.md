@@ -1,53 +1,87 @@
-# MC Shaders
+# MC Shaders++
 
-A dimension-aware shader effect framework for Minecraft.
+Change how a Minecraft dimension **looks** — by editing JSON, not by writing shaders.
 
-Bind visual effects — fog, colour grading, distortion, bloom — to dimensions, and
-have them blend smoothly as players move between worlds. Effects are described as
-backend-neutral data, so the same binding renders on OpenGL today and Vulkan when
-Minecraft's renderer transition completes.
+```json
+{ "id": "overworld_storm", "dimension": "minecraft:overworld", "priority": 20,
+  "condition": { "type": "weather", "weather": "thunder" },
+  "stack": { "layers": [ { "id": "atmosphere", "kind": "fog", "type": "mcshaders:fog",
+    "params": { "start": 8.0, "end": 56.0,
+                "color": { "r": 0.325, "g": 0.361, "b": 0.404, "a": 1.0 } } } ] } }
+```
 
-> **Status: early.** The framework is built, tested, and builds into Fabric and
-> NeoForge jars for Minecraft 26.2. It does not draw anything yet — see
-> [Where this actually is](#where-this-actually-is).
+Drop that in a datapack, `/reload`, and the Overworld's fog closes in when it thunders.
+Looks are described as data, so they can be authored, layered by priority, gated on
+world conditions, and eased between — with no Java and no GLSL.
+
+> ### Honest status
+>
+> **Everything is built and tested. Nothing has been run in a game.**
+>
+> The framework has 585 tests. CI compiles the mod against the real Minecraft 26.2 jar
+> on both loaders, so every API call in it exists — that part is read from source, not
+> guessed. But **a mixin that compiles has not been shown to apply, and an event that
+> compiles has not been shown to fire.** Fog reaching the screen, `/reload` loading a
+> file, and the editor screens have each been verified only as far as the compiler goes.
+>
+> If you are looking for an Iris-style shader pack, this is not one — see
+> [docs/SHADERS.md](docs/SHADERS.md), which separates the three different things
+> "shaders in Minecraft" can mean.
+
+**New here?** [docs/SHADERS.md](docs/SHADERS.md) explains what this does in plain terms
+and is the right place to start.
+
+## What works, and what does not
+
+| | |
+|---|---|
+| The look model — layers, params, conditions, priority merge, easing | **Tested**, no Minecraft needed |
+| Datapack loading and `/reload` | **Compile-verified**; never observed loading a file |
+| Fog reaching the frame | **Compile-verified**; never observed changing a pixel |
+| In-game editor (both loaders) | **Compiles**; screens never opened |
+| Shader-pack checker (`check/`) | **Works today**, standalone, no game |
+| Its own post-processing chains | **Not built** — 26.2 entry points not established |
+| Coexistence with Iris and friends | **Not built** |
+
+The first launch is instrumented for this gap: after 200 frames the mod logs which links
+of the chain ran and, for any that did not, what to look at — so the first run produces a
+diagnosis rather than a mystery.
 
 ## Why it is built this way
 
-Minecraft 26.2 ships an experimental Vulkan renderer alongside OpenGL, and
-OpenGL is slated for removal once Vulkan stabilises. A shader mod written
-directly against GLSL today gets rewritten when that lands.
+Minecraft 26.2 ships an experimental Vulkan renderer alongside OpenGL, and OpenGL is
+slated for removal once Vulkan stabilises. A shader mod written directly against GLSL
+today gets rewritten when that lands.
 
-So the graphics API sits behind a single interface. Everything above it is plain
-data: a description of what the frame should look like, never how to draw it.
-Swapping renderers becomes an addition rather than a migration.
+So the graphics API sits behind one interface, and everything above it is plain data:
+a description of what the frame should look like, never how to draw it. Swapping
+renderers becomes an addition rather than a migration.
 
-The same decision makes the framework testable without a game running — the core
-has no Minecraft dependency at all, and its test suite runs on a bare JDK.
+The same decision makes the framework testable without a game — the core has no
+Minecraft dependency at all and its suite runs on a bare JDK. That is why the honest
+status above can be as specific as it is.
 
 ## Targets
 
 | | |
 |---|---|
 | **Minecraft** | 26.2 (current stable); 26.3 prepared, retarget when it ships |
-| **Loaders** | Fabric, NeoForge |
+| **Loaders** | Fabric and NeoForge, at parity |
 | **Java** | 25 for the mod, 21 for the framework core |
-| **Gradle** | 9.4.0, pinned in the committed wrapper |
-| **Artifacts** | `mcshaders-core` (no Minecraft), `mcshaders-api` (for mods) |
+| **Gradle** | 9.5.1, pinned in the committed wrapper |
+| **Artifacts** | `mcshaders-core`, `mcshaders-api`, `mcshaders-check` |
 
-Minecraft coordinates are looked up per version from `gradle.properties`, so
-retargeting is one property change rather than a build script edit. Version
-provenance and confidence levels — including which numbers are still unverified —
-are in [docs/VERSIONS.md](docs/VERSIONS.md).
+Minecraft coordinates are looked up per version from `gradle.properties`, so retargeting
+is one property change rather than a build-script edit. Version provenance — including
+which numbers are verified in CI and which are not — is in
+[docs/VERSIONS.md](docs/VERSIONS.md).
 
-## Using it as a library
-
-Other mods can contribute effects, backends and dimension looks; the pure-Java core
-is also usable in any JVM project with no Minecraft involved.
+## Using it from your own mod
 
 ```kotlin
 dependencies {
     implementation("net.cyberpunk042:mcshaders-api:0.2.0")   // in a Minecraft mod
-    implementation("net.cyberpunk042:mcshaders-core:0.2.0")  // anywhere else
+    implementation("net.cyberpunk042:mcshaders-core:0.2.0")  // anywhere on the JVM
 }
 ```
 
@@ -59,46 +93,47 @@ McShadersAPI.registerBinding(DimensionBinding.of(
 // Add an effect type of your own
 McShadersAPI.registerEffect(EffectDefinition.of("mymod:kaleidoscope", "mymod"));
 
+// Make it tunable from the in-game editor
+McShadersAPI.registerSchema("mymod:kaleidoscope", schema);
+
 // Or supply an entire renderer
 McShadersAPI.registerBackend(new MyBackendFactory());
 ```
 
-Registration closes on first use of the backend, so register from your mod's
-initialiser. Load order between mods does not matter: backends are chosen by declared
-priority, and colliding effect types are refused rather than silently shadowed.
+Registration closes on first use of the backend, so register from your initialiser. Load
+order between mods does not matter: backends are chosen by declared priority, and
+colliding effect types are refused rather than silently shadowed.
 
-Full guide, including how to implement a backend:
-**[docs/USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md)**.
+Full guide — including how to implement a backend:
+**[docs/USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md)**. Its examples are run as
+tests, so they cannot quietly go stale.
 
 ## Layout
 
 ```
-core/       the framework — pure Java, zero Minecraft dependencies
+core/       the framework — pure Java, zero Minecraft
 check/      shader-pack checker — pure Java, runs without the game
-common/     Minecraft-facing code shared across loaders
-fabric/     Fabric adapter
-neoforge/   NeoForge adapter
-docs/       architecture, roadmap, version provenance
+common/     the published API — still no Minecraft, so it stays usable off-game
+vanilla/    vanilla Minecraft, no loader API — shared by both loaders
+fabric/     Fabric adapter — registration only
+neoforge/   NeoForge adapter — registration only
+datapack/   the looks this mod ships, authored once for both loaders
+docs/       architecture, roadmap, version provenance, 26.2 findings
 ```
+
+`vanilla/` is why Fabric and NeoForge behave identically rather than being kept in step
+by hand: the work lives there once, and each loader keeps only the few lines that differ.
 
 ## Building
 
-Use the wrapper; it pins Gradle 9.4.0.
-
-The core builds anywhere, with no Minecraft toolchain and no access to Minecraft
-Maven hosts:
+The core and the checker build anywhere — no Minecraft toolchain, no Minecraft Maven:
 
 ```sh
-cd core && ../gradlew test
-```
-
-So does the checker:
-
-```sh
+cd core  && ../gradlew test
 cd check && ../gradlew test
 ```
 
-The shared module needs JDK 25, but still no Minecraft Maven:
+The published API needs JDK 25, but still no Minecraft Maven:
 
 ```sh
 ./gradlew :common:build --configure-on-demand
@@ -112,119 +147,40 @@ The loader modules additionally need reachable Fabric/NeoForge Maven:
 
 ## Checking a shader pack
 
-A post-processing chain is bound to its shaders by convention and to its uniform
-blocks by *byte offset*. Nothing in the normal toolchain checks either. A shader
-that moved leaves a chain that loads, catches its own exception and silently does
-nothing; a uniform block whose two declarations have drifted apart leaves a shader
-reading real numbers from the wrong places. Neither produces an error anywhere.
-
-`check/` finds both, from text, with no GPU and no game:
+Independent of the rest, and useful on packs unrelated to this mod. A chain is bound to
+its shaders by naming convention and to its uniform blocks by **byte offset**, and
+nothing in the normal toolchain checks either — so a renamed shader leaves a chain that
+loads, swallows its error and does nothing.
 
 ```sh
 cd check && ../gradlew run --args="/path/to/assets"
 ```
 
-Released versions publish a runnable distribution to GitHub Packages as
-`net.cyberpunk042:mcshaders-check`, so using it does not mean cloning this
-repository.
+Reads text, needs no GPU, exits non-zero on errors so it can gate a build. Published as
+`mcshaders-check` so it can run in someone else's CI without cloning this repo.
 
-It walks every `post_effect/*.json` under that directory and reports missing
-shaders, unresolved includes, targets read before they are written, targets
-nothing reads, inputs whose sampler the shader does not declare, and uniform
-blocks the pipeline and the shader disagree about — with the byte offset where
-the disagreement starts. It exits non-zero on errors, so it can gate a build.
-Warnings and notes are printed and do not fail.
+It cannot tell you whether the GLSL compiles. That needs a driver.
 
-Being a separate build with no Minecraft dependency is deliberate: a pack should
-be checkable in someone else's CI, by someone with no interest in building this
-mod.
+## Documentation
 
-## How it works
+| | |
+|---|---|
+| [SHADERS.md](docs/SHADERS.md) | **Start here.** What this does, in plain terms |
+| [USING_AS_A_LIBRARY.md](docs/USING_AS_A_LIBRARY.md) | Consuming it from a mod or off-game |
+| [ROADMAP.md](docs/ROADMAP.md) | What is done, what is next, and what each milestone did *not* do |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md) | Module layout and data flow |
+| [VERSIONS.md](docs/VERSIONS.md) | Every pinned version, with how confident we are in it |
+| [RENDERING-26.2.md](docs/RENDERING-26.2.md) | 26.2 render-path findings, with sources |
+| [DATAPACKS-26.2.md](docs/DATAPACKS-26.2.md) · [BLOCKS-26.2.md](docs/BLOCKS-26.2.md) · [PORTALS-26.2.md](docs/PORTALS-26.2.md) | The same, per area |
+| [PORTING.md](docs/PORTING.md) | What came from `the-virus-block-mc`, and the licence split |
+| [VIRUS-BLOCK-SHADER-STATE.md](docs/VIRUS-BLOCK-SHADER-STATE.md) | What the checker found in those packs |
 
-```java
-// Describe a look
-EffectStack netherHeat = EffectStack.of(
-    EffectLayer.of("heat_haze", EffectKind.DISTORT,
-        EffectParams.builder().scalar("amplitude", 0.02).build()),
-    EffectLayer.of("ember_grade", EffectKind.COLOR_GRADE,
-        EffectParams.builder().color("tint", 1.0f, 0.6f, 0.4f, 1.0f).build()));
-
-// Bind it to a dimension, conditionally if you like
-BindingRegistry registry = BindingRegistry.of(
-    DimensionBinding.of("nether_base", DimensionId.minecraft("the_nether"), netherHeat));
-
-// Drive it each frame — transitions and capability filtering are handled
-pipeline.frame(worldState, deltaTicks, frameContext);
-```
-
-Bindings merge **per layer**, not per stack. A pack that overrides `heat_haze`
-leaves `ember_grade` untouched, so packs compose instead of fighting.
-
-Conditions are declarative data — time of day (ranges wrap across midnight), Y
-range, weather, biome tag, submersion — combined with and/or/not.
-
-## Where this actually is
-
-Built and verified:
-
-- Parameter model with interpolation
-- Effect layers and stacks with per-id merge semantics
-- Dimension bindings and the condition algebra
-- Transitions with easing and mid-blend retargeting
-- Capability-aware compilation to a render plan
-- The backend seam, with a no-op implementation
-- Public API for third parties: effect types, backend contribution with priority
-  selection, and binding registration, all with a defined registration lifecycle
-- GLSL include resolution, with cycle reporting and `#line` source mapping
-- The geometry half: shape maths, the shape model, motion, and the field system
-  (shapes and the links between them) — ported out of `the-virus-block-mc` with
-  characterisation tests it did not have before
-- Static checking that needs no GPU: std140 placement, reading a uniform block
-  back out of GLSL, comparing two declarations byte by byte, and a CLI that exits
-  non-zero so a pack can be gated in CI
-- An editing schema, an edit session with undo, and a tuning store that keeps what
-  was edited
-- The editor itself — schema-driven screens on Fabric, opened by an unbound key
-
-**377 tests in `core`, 54 in `common` and 35 in `check` — 466 in all, 0 failures.**
-Verified 2026-08-22.
-
-Not built yet:
-
-- Any rendering backend that draws (M2). The fog entry point is now established
-  from a mod that compiles on 26.2; the post-effect chain is not — see
-  [docs/RENDERING-26.2.md](docs/RENDERING-26.2.md)
-- Datapack loading — the format, its reader and its error reporting all exist and
-  are tested, but nothing hands them the files yet, so bindings are registered
-  programmatically (M3)
-- The portal onto `mcshaders:beyond`. Every 26.2 call it needs is now read out of a
-  mod that compiles on 26.2 rather than guessed — the teleport and the frame scan in
-  [docs/PORTALS-26.2.md](docs/PORTALS-26.2.md), block registration and the
-  right-click that lights it in [docs/BLOCKS-26.2.md](docs/BLOCKS-26.2.md)
-- The demo dimensions (M4)
-
-One honest caveat about the editor: it compiles against the real 26.2 API in CI,
-which proves its calls exist — not that the screens look right. That needs someone
-to open them. It does now have contents to show, since the mod registers a fog
-effect and a look for `mcshaders:beyond` of its own.
-
-The whole build is green in CI: `./gradlew build` on JDK 25 produces Fabric and
-NeoForge jars against Minecraft 26.2, which pins every version in
-[docs/VERSIONS.md](docs/VERSIONS.md).
-
-Getting there surfaced two 26.x migration details worth knowing if you are porting
-from 1.21 — the Loom plugin id changed and mappings are gone entirely. Both are
-written up in VERSIONS.md.
-
-See [docs/ROADMAP.md](docs/ROADMAP.md).
-
-The effects being ported from `the-virus-block-mc` have been run through the checker;
-what it found — four chains naming archived shaders, one uniform block that thirteen
-chains share and disagree with, and several hosts that stopped being extended when their
-shader was — is written up in
-[docs/VIRUS-BLOCK-SHADER-STATE.md](docs/VIRUS-BLOCK-SHADER-STATE.md), along with the
-things in that report that look alarming and are correct by design.
+Every 26.2 document says what was verified, from which source, **and what was not**.
+That convention exists because this project has been wrong before by remembering an API
+instead of reading one.
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT for the engine — see [LICENSE](LICENSE). Content ported from
+`the-virus-block-mc` carries its own terms; the split is recorded in
+[docs/PORTING.md](docs/PORTING.md).

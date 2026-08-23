@@ -6,7 +6,7 @@ issueTrackerURL = "https://github.com/cyberpunk042/mc-shaders/issues"
 [[mods]]
 modId = "mcshaders"
 version = "${version}"
-displayName = "MC Shaders"
+displayName = "MC Shaders++"
 authors = "cyberpunk042"
 description = '''
 A dimension-aware shader effect framework for Minecraft. Binds backend-neutral
