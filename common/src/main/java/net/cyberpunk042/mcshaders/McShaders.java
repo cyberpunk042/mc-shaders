@@ -22,8 +22,17 @@ import net.cyberpunk042.mcshaders.core.binding.BindingRegistry;
  */
 public final class McShaders {
 
+    /**
+     * The namespace, and deliberately NOT the display name.
+     *
+     * <p>It is the namespace of every {@code Identifier} this mod creates and the
+     * directory every binding file lives under — {@code data/<ns>/mcshaders/bindings/}.
+     * Renaming it would invalidate every pack anyone has written, so the mod's name
+     * changing does not change this.
+     */
     public static final String MOD_ID = "mcshaders";
-    public static final String MOD_NAME = "MC Shaders";
+    /** Display name, shown in the mod list and used as the logger name. */
+    public static final String MOD_NAME = "MC Shaders++";
 
     private static BindingRegistry registry = BindingRegistry.empty();
     private static EffectBackend backend = new NoOpBackend();
