@@ -2,6 +2,7 @@ package net.cyberpunk042.mcshaders.vanilla.render;
 
 import java.util.LinkedHashSet;
 import java.util.Set;
+import net.cyberpunk042.mcshaders.McShaders;
 import net.cyberpunk042.mcshaders.core.binding.DimensionId;
 import net.cyberpunk042.mcshaders.core.binding.WorldState;
 import net.cyberpunk042.mcshaders.sample.WorldSample;
@@ -11,7 +12,10 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.renderer.state.level.LevelRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.resources.Identifier;
+import net.cyberpunk042.mcshaders.diag.ChainCheck;
 import net.minecraft.world.level.material.FogType;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Reads the game, so {@link WorldSample} does not have to.
@@ -44,6 +48,8 @@ import net.minecraft.world.level.material.FogType;
  */
 public final class WorldSampler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(McShaders.MOD_NAME);
+
     private WorldSampler() {
     }
 
@@ -61,6 +67,9 @@ public final class WorldSampler {
         if (level == null || camera == null || deltaTracker == null || levelState == null) {
             return null;
         }
+
+        ChainCheck.frameSampled();
+        emitDueReport();
 
         float partialTick = deltaTracker.getGameTimeDeltaPartialTick(false);
         BlockPos at = camera.blockPosition();
@@ -134,5 +143,26 @@ public final class WorldSampler {
     private static boolean isSubmerged(LevelRenderState levelState) {
         FogType fog = levelState.cameraRenderState.fogType;
         return fog == FogType.WATER || fog == FogType.LAVA || fog == FogType.POWDER_SNOW;
+    }
+
+    /**
+     * Says once whether the whole chain ran, and what to look at if it did not.
+     *
+     * <p>Here because this is the one place both loaders reach every frame, so neither
+     * needs its own copy of the timing — and because a chain that is broken at the
+     * render hook never gets this far, which is itself the report's first finding.
+     */
+    private static void emitDueReport() {
+        ChainCheck.Report due = ChainCheck.dueReport();
+        if (due == null) {
+            return;
+        }
+        for (String finding : due.findings()) {
+            if (due.healthy()) {
+                LOGGER.info("{}", finding);
+            } else {
+                LOGGER.warn("{}", finding);
+            }
+        }
     }
 }
