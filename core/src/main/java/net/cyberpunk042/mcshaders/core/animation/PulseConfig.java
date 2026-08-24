@@ -53,9 +53,29 @@ public record PulseConfig(
         return new PulseConfig(amplitude, speed, Waveform.SINE, 1 - amplitude, 1 + amplitude, PulseMode.SCALE);
     }
     
-    /** Whether this pulse is active. */
+    /**
+     * Whether this pulse would actually change anything.
+     *
+     * <p>Asks what {@link #evaluate} reads, which is {@code speed}, {@code min} and
+     * {@code max}. It used to ask {@code scale != 0 && speed != 0}, and disagreed with
+     * its own method in both directions: a pulse with a real {@code min}/{@code max}
+     * range and {@code scale == 0} called itself inactive and evaluated to a flat
+     * {@code 1.0}, while one with {@code min == max} called itself active and evaluated
+     * to a constant. {@code Primitive.isAnimated()} reaches this through
+     * {@link Animation#isActive()}, so both answers were visible.
+     *
+     * <p>{@code scale} is the amplitude {@link #sine} was given, and {@code min} and
+     * {@code max} are derived from it there — so for anything built that way the two
+     * spellings agree and this is not a behaviour change. {@link #NONE} and
+     * {@link #DEFAULT} are unaffected. Nothing reads {@code scale} to compute a value;
+     * whether it should stay in the record at all is a separate question, and it is a
+     * required JSON key, so it is left alone here.
+     *
+     * <p>{@link AlphaPulseConfig#isActive()} — the same idea for alpha — has always
+     * asked it this way.
+     */
     public boolean isActive() {
-        return scale != 0 && speed != 0;
+        return speed != 0 && min != max;
     }
     
     /**
