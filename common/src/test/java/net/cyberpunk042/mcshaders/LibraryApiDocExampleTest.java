@@ -39,6 +39,28 @@ import org.junit.jupiter.api.Test;
  * <p><strong>Ordered first.</strong> These call {@code registerX}, which throws once
  * registration closes, and other classes here close it deliberately. {@code @Order(0)}
  * puts this ahead of them; it does not close registration itself.
+ *
+ * <h2>Not pinned to the guide, and not for want of trying</h2>
+ *
+ * <p>Two mechanisms in this repository hold a test to the page it copies, and neither
+ * fits here. {@code ShapeRecipeDocTest.Page} reads the block between {@code begin}/
+ * {@code end} markers and requires every line of it to appear on the page; there is no
+ * verbatim block here to mark, because these examples are interleaved with setup and
+ * assertions. {@code LibraryDocExampleTest.Guide} requires each {@code // ── docs: X ──}
+ * marker to name a real heading; this file has no such markers.
+ *
+ * <p>The obvious substitute is the nested classes' display names, and it does not work:
+ * three of the five correspond to a heading, "making an effect editable" and
+ * "registration's own lifecycle" are deliberately worded differently from "Making it
+ * reachable from the editor" and "Registration and its lifecycle", and the last one says
+ * in its own name that the guide does not carry it. A check on those would fail on
+ * phrasing rather than on drift, and making it pass would mean renaming these to suit
+ * the check rather than the reader.
+ *
+ * <p>So this is recorded rather than closed. Adding markers here would make the existing
+ * mechanism apply, but choosing which section each class belongs to is a claim about the
+ * guide's structure, not a correction — and a wrong one would be worse than the gap,
+ * because it would look guarded.
  */
 @Order(0)
 class LibraryApiDocExampleTest {
