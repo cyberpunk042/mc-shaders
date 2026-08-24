@@ -95,7 +95,10 @@ That is a real result and it is also a narrow one. Three things it does **not** 
   tessellator logs `use direct rendering. Falling back to LAT_LON for mesh` and hands
   back a lat-lon sphere. Non-empty, no exception, different shape. Counting it as built
   is accurate and misleading at the same time, which is why it is written down here
-  rather than left in a log line nobody reads.
+  rather than left in a log line nobody reads. `SphereTessellator.requiresDirectRendering`
+  is the predicate that names it, and `DirectRenderingSubstitutionTest` now holds that
+  predicate to what the tessellator actually does — before which it had no callers at
+  all.
 - **It says nothing about the four directories that read nothing.** Zero files built out
   of zero files read is not evidence of anything.
 
