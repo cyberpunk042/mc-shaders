@@ -123,6 +123,12 @@ of gap described for post-processing chains in
 deliberately kept free of serialisation on the way across, so the codec layer above it
 is still to be written.
 
+What *is* written is its specification. The model carries `@JsonField` on 326 fields
+across 36 types — names, aliases, and the conditions under which a value may be omitted
+— and every one of those directives is now checked to resolve against the code it
+describes. That does not make fields loadable; it means the spec a codec would implement
+is known-good rather than assumed, which was not true before.
+
 **Some link semantics are unsettled.** Primitives can link to one another, and what a
 link like `radiusMatch` should mean *per shape type* — one radius for a sphere, inner
 and outer for a ring, radius and top for a cylinder — has not been decided. The examples

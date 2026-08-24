@@ -176,8 +176,21 @@ public @interface JsonField {
     /**
      * Skip serialization when this field equals a static constant of the same type.
      * 
-     * <p>The constant is looked up as a static field on the field's declared type.
-     * Useful when a field defaults to a "none" or "identity" constant.</p>
+     * <p>Two forms are accepted:</p>
+     * <ul>
+     *   <li><b>Bare</b> &mdash; {@code "NONE"} looks up a static field on the field's
+     *       own declared type.</li>
+     *   <li><b>Qualified</b> &mdash; {@code "QuadPattern.DEFAULT"} looks up a static
+     *       field on that type, resolved in the <em>field type's package</em>. This is
+     *       the only form that works when the constant lives on a different type from
+     *       the field, which happens whenever the field is declared as an interface.</li>
+     * </ul>
+     *
+     * <p>It names a <em>constant</em>, never a literal: a primitive field has no static
+     * fields to find, so {@code "1.0f"} can never resolve. To skip a primitive at a
+     * particular value use {@link #skipIfDefault()} with {@link #defaultValue()}.</p>
+     *
+     * <p>Useful when a field defaults to a "none" or "identity" constant.</p>
      * 
      * <p>Example:</p>
      * <pre>{@code

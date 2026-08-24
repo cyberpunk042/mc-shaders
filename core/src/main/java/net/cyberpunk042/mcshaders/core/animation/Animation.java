@@ -46,7 +46,7 @@ import net.cyberpunk042.mcshaders.core.serial.JsonField;
 public record Animation(
     @JsonField(skipUnless = "isActive") SpinConfig spin,
     @JsonField(skipUnless = "isActive") PulseConfig pulse,
-    @Range(ValueRange.NORMALIZED) @JsonField(skipIfEqualsConstant = "0.0f") float phase,
+    @Range(ValueRange.NORMALIZED) @JsonField(skipIfDefault = true, defaultValue = "0.0") float phase,
     @JsonField(skipUnless = "isActive") AlphaPulseConfig alphaPulse,
     @JsonField(skipUnless = "isActive") ColorCycleConfig colorCycle,
     @JsonField(skipUnless = "isActive") WobbleConfig wobble,

@@ -79,7 +79,7 @@ public record Transform(
     @JsonField(skipIfNull = true) Vector3f rotation,
     @JsonField(skipIfDefault = true, defaultValue = "true") boolean inheritRotation,
     // Scale
-    @Range(ValueRange.SCALE) @JsonField(skipIfEqualsConstant = "1.0f") float scale,
+    @Range(ValueRange.SCALE) @JsonField(skipIfDefault = true, defaultValue = "1.0") float scale,
     @JsonField(skipIfNull = true) Vector3f scaleXYZ,
     @JsonField(skipIfDefault = true) boolean scaleWithRadius,
     @JsonField(skipIfEqualsConstant = "Facing.FIXED") // Orientation
