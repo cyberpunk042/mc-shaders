@@ -67,9 +67,25 @@ public enum SphereAlgorithm {
     /** Returns true if this is the default algorithm */
     public boolean isDefault() { return this == LAT_LON; }
     
-    /** Returns true if this algorithm supports partial spheres */
+    /**
+     * Whether this algorithm honours {@code latStart}/{@code latEnd} and
+     * {@code lonStart}/{@code lonEnd} — a hemisphere, a wedge, a band.
+     *
+     * <p>Only {@code LAT_LON} does. This used to claim {@code UV_SPHERE} as well, which
+     * was not true: {@code SphereTessellator.tessellateUvSphere} reads {@code latSteps},
+     * {@code lonSteps} and {@code radius} and generates the whole surface, so a shape
+     * asking for half a UV sphere got a whole one with no warning. {@code ICO_SPHERE}
+     * subdivides an icosahedron and has no lat/lon ranges to honour in the first place.
+     *
+     * <p>Narrowing the predicate is the truthful fix, not the only possible one: teaching
+     * {@code tessellateUvSphere} to honour the ranges would make the old claim true
+     * instead. That changes what existing content renders as, so it is a decision rather
+     * than a correction, and it is left open here rather than taken quietly.
+     *
+     * <p>Held to the tessellator by {@code SphereAlgorithmClaimsTest}.
+     */
     public boolean supportsPartialSphere() {
-        return this == LAT_LON || this == UV_SPHERE;
+        return this == LAT_LON;
     }
     
     /** Returns true if this algorithm supports visibility patterns */
