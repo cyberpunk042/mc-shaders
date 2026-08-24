@@ -4,6 +4,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
 import java.util.List;
 import net.cyberpunk042.mcshaders.core.animation.Animation;
 import net.cyberpunk042.mcshaders.core.appearance.Appearance;
@@ -22,6 +27,7 @@ import net.cyberpunk042.mcshaders.core.shape.SphereShape;
 import net.cyberpunk042.mcshaders.core.transform.Transform;
 import net.cyberpunk042.mcshaders.core.visibility.VisibilityMask;
 import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 /**
@@ -118,5 +124,108 @@ class ShapeRecipeDocTest {
         return new SimplePrimitive(id, shape.getType(), shape, Transform.IDENTITY,
                 FillConfig.SOLID, VisibilityMask.FULL, ArrangementConfig.DEFAULT,
                 Appearance.DEFAULT, Animation.NONE, PrimitiveLink.NONE);
+    }
+
+    /**
+     * The page and the transcription above, held together.
+     *
+     * <p>The examples between the {@code SHAPES.md} markers are a copy, and a copy goes
+     * stale the moment somebody edits the markdown. Until now nothing here opened the
+     * page: the two could disagree completely and this class would still pass, which is
+     * the one failure a doc test exists to catch. {@code LayerGeometryTest.Guide} does
+     * the same job for the library guide.
+     *
+     * <p>It differs from that one in reading <em>this file</em> rather than listing
+     * snippets. A hand-listed snippet is itself a transcription with the same rot, one
+     * level up — add a line to the example above and a snippet list silently stops
+     * covering it. Taking the block from the source means the check grows with the
+     * example instead.
+     */
+    @Nested
+    @DisplayName("the page")
+    class Page {
+
+        private static final String PAGE = "docs/SHAPES.md";
+        private static final String SOURCE =
+                "core/src/test/java/net/cyberpunk042/mcshaders/core/ShapeRecipeDocTest.java";
+
+        @Test
+        @DisplayName("every line of the sun example is on the page")
+        void sunExampleIsOnThePage() {
+            assertBlockIsOnThePage("sun");
+        }
+
+        @Test
+        @DisplayName("every line of the magic-circle example is on the page")
+        void magicCircleExampleIsOnThePage() {
+            assertBlockIsOnThePage("magic circle");
+        }
+
+        private static void assertBlockIsOnThePage(String marker) {
+            Path root = repoRoot();
+            List<String> code = codeBetweenMarkers(root, marker);
+
+            // Without this the whole check passes by finding nothing to check --
+            // a renamed marker would read as agreement.
+            assertFalse(code.isEmpty(),
+                    () -> "no code found between the '" + marker + "' markers; if they were "
+                            + "renamed, this check silently stopped checking anything");
+
+            String page = read(root.resolve(PAGE));
+            for (String line : code) {
+                assertTrue(page.contains(line),
+                        () -> PAGE + " no longer contains this line of the '" + marker
+                                + "' example, so the copy above is stale:\n    " + line);
+            }
+        }
+
+        /** The example's real code lines, dedented to match the page's fence. */
+        private static List<String> codeBetweenMarkers(Path root, String marker) {
+            List<String> source = List.of(read(root.resolve(SOURCE)).split("\n", -1));
+            int begin = -1;
+            int end = -1;
+            for (int i = 0; i < source.size(); i++) {
+                if (begin < 0 && source.get(i).contains("begin SHAPES.md " + marker)) {
+                    begin = i;
+                } else if (begin >= 0 && source.get(i).contains("end SHAPES.md " + marker)) {
+                    end = i;
+                    break;
+                }
+            }
+            assertTrue(begin >= 0 && end > begin,
+                    () -> "could not find the '" + marker + "' markers in " + SOURCE);
+
+            List<String> lines = new ArrayList<>();
+            for (String line : source.subList(begin + 1, end)) {
+                String trimmed = line.strip();
+                // Prose comments explain the example here; the page says it around the
+                // fence instead, so they are not expected to match.
+                if (!trimmed.isEmpty() && !trimmed.startsWith("//")) {
+                    lines.add(line);
+                }
+            }
+            int indent = lines.stream()
+                    .mapToInt(line -> line.length() - line.stripLeading().length())
+                    .min().orElse(0);
+            return lines.stream().map(line -> line.substring(indent)).toList();
+        }
+
+        private static String read(Path file) {
+            try {
+                return Files.readString(file);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        private static Path repoRoot() {
+            for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
+                if (Files.isRegularFile(dir.resolve("LICENSE"))
+                        && Files.isRegularFile(dir.resolve(PAGE))) {
+                    return dir;
+                }
+            }
+            throw new AssertionError("could not find the repository root");
+        }
     }
 }
