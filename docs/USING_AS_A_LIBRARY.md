@@ -570,6 +570,39 @@ that step**. The renderer consumed `offset`, `scale`, `color`, `alpha`, `orbitCo
 nothing on screen. `LinkResolverTest` pins both halves: that resolving alone leaves the
 shape alone, and that doing the last step is what makes the mesh change size.
 
+### Building a whole layer at once
+
+Everything above is the sequence per primitive. `LayerGeometry` is that sequence for a
+whole layer, which is what a renderer actually wants:
+
+```java
+List<LayerGeometry.Piece> pieces =
+        LayerGeometry.build(layer, LayerGeometry.RadiusPolicy.IGNORE);
+```
+
+Each `Piece` carries the primitive, its tessellated `mesh`, the `transform` (the
+layer's, the primitive's and whatever its links resolved to, composed through
+`TransformStack`'s rules), and the `appearance` with resolved colour and alpha applied
+and the layer's alpha multiplied in.
+
+**The radius policy is a required argument, and that is the point.** It is the one step
+core will not choose for you, so rather than leaving it in a paragraph you might skip,
+it sits in the signature where it has to be answered. `RadiusPolicy.IGNORE` is the
+answer "do what the old renderer did" — still available, but now written at the call
+site instead of being an omission nobody notices. A policy that resizes looks like:
+
+```java
+LayerGeometry.build(layer, (shape, radius) ->
+        shape instanceof SphereShape ? SphereShape.of(radius) : shape);
+```
+
+Two things it deliberately does not do. **Animation is untouched** — spin, pulse and
+orbit are functions of time and this builds geometry for no particular time, so `Piece`
+hands back the primitive for a renderer to drive against its own clock. **Visibility is
+not enforced** — a hidden layer still builds, because an editor previewing one wants
+the geometry and returning nothing would look exactly like a failure. Ask
+`layer.isDrawable()` yourself.
+
 ### Reading and writing layers as JSON
 
 `FieldCodec` is one document in each direction. It is in `common` rather than `core`

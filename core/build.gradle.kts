@@ -55,6 +55,14 @@ tasks.test {
     inputs.files(fileTree("src/main/java"))
         .withPropertyName("mainSourcesAsText")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // LayerGeometryTest asserts the library guide still contains the examples it runs.
+    // The guide lives in the outer repository, not this included build, and Gradle
+    // cannot infer it — without this a doc-only edit re-runs nothing and a stale
+    // example stays green, which is the one case that assertion exists for.
+    inputs.file(rootDir.parentFile.resolve("docs/USING_AS_A_LIBRARY.md"))
+        .withPropertyName("libraryGuide")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Javadoc is published because this is a library other people read against.
