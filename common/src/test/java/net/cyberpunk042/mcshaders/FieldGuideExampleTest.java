@@ -54,6 +54,9 @@ class FieldGuideExampleTest {
         assertEquals(layer, back, "the guide promises equals(layer)");
 
         assertGuideShows("JsonObject json = FieldCodec.write(layer);");
+        assertGuideShows("Only `id` is required.");
+        assertGuideShows(
+                "FieldCodec.write(FieldLayer.empty(\"empty\")).toString();   // {\"id\":\"empty\"}");
         assertGuideShows(
                 "FieldLayer back = FieldCodec.read(json.toString(), \"sun.json\");");
     }

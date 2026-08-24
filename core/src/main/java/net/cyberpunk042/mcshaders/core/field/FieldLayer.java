@@ -16,6 +16,7 @@ import java.util.Objects;
 import net.cyberpunk042.mcshaders.core.animation.Animation;
 import net.cyberpunk042.mcshaders.core.api.Stable;
 import net.cyberpunk042.mcshaders.core.effect.BlendMode;
+import net.cyberpunk042.mcshaders.core.serial.JsonField;
 import net.cyberpunk042.mcshaders.core.transform.Transform;
 
 /**
@@ -29,6 +30,22 @@ import net.cyberpunk042.mcshaders.core.transform.Transform;
  *
  * <p>Layers are immutable. {@link Builder} is there for the cases with more than a
  * couple of non-default settings; {@link #of} covers the rest.
+ *
+ * <h2>What may be left out of a file</h2>
+ *
+ * <p>Every component but {@code id} carries a {@link JsonField} directive saying it
+ * may be omitted, and each one matches what the compact constructor below already
+ * substitutes for a null. That is not a new permission: the record has always
+ * accepted a layer with no transform and meant {@code IDENTITY} by it. The
+ * annotations are what let a *file* say the same thing.
+ *
+ * <p>They were missing until a run against real content found it, and the gap is
+ * worth naming because of how it hid. A layer is the one record here a person writes
+ * by hand, and the codec's round-trip tests could not catch an omission rule that did
+ * not exist — a writer with nothing to omit emits every key, and reading that back
+ * succeeds. Only a file nobody generated, spelling out {@code id} and
+ * {@code primitives} and trusting the rest to default, showed that it could not be
+ * read at all.
  *
  * <h2>What a layer does not do</h2>
  *
@@ -52,12 +69,15 @@ import net.cyberpunk042.mcshaders.core.transform.Transform;
 @Stable(since = "0.5.0")
 public record FieldLayer(
         String id,
-        List<Primitive> primitives,
-        Transform transform,
-        Animation animation,
-        float alpha,
-        boolean visible,
-        BlendMode blendMode) {
+        @JsonField(skipIfEmpty = true) List<Primitive> primitives,
+        @JsonField(skipIfEqualsConstant = "Transform.IDENTITY", skipIfNull = true)
+                Transform transform,
+        @JsonField(skipIfEqualsConstant = "Animation.NONE", skipIfNull = true)
+                Animation animation,
+        @JsonField(skipIfDefault = true, defaultValue = "1.0") float alpha,
+        @JsonField(skipIfDefault = true, defaultValue = "true") boolean visible,
+        @JsonField(skipIfEqualsConstant = "BlendMode.ALPHA", skipIfNull = true)
+                BlendMode blendMode) {
 
     /** Rejects the states that would fail later, in a place that says less about why. */
     public FieldLayer {

@@ -12,9 +12,12 @@ import java.util.List;
 import java.util.Map;
 import net.cyberpunk042.mcshaders.codec.FieldCodec;
 import net.cyberpunk042.mcshaders.codec.FieldLoader;
+import net.cyberpunk042.mcshaders.core.animation.Animation;
+import net.cyberpunk042.mcshaders.core.effect.BlendMode;
 import net.cyberpunk042.mcshaders.core.field.FieldLayer;
 import net.cyberpunk042.mcshaders.core.field.SimplePrimitive;
 import net.cyberpunk042.mcshaders.core.shape.SphereShape;
+import net.cyberpunk042.mcshaders.core.transform.Transform;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -122,6 +125,71 @@ class FieldLoaderTest {
             FieldLoader.Result result = FieldLoader.load(files("sun.json", layer("sun", 1.0f)));
 
             assertTrue(result.layer("no_such_layer").isEmpty());
+        }
+    }
+
+    @Nested
+    @DisplayName("a file a person wrote")
+    class HandWritten {
+
+        // Every fixture above is written by FieldCodec, deliberately, so it cannot
+        // drift from the model. That has a blind spot exactly the size of this class:
+        // a writer omits what the annotations allow, so reading its output back can
+        // never prove a *missing* key is allowed. It proves only that the two halves
+        // agree. These are files nobody generated.
+
+        @Test
+        @DisplayName("id and primitives are enough; the rest default")
+        void minimalLayerLoads() {
+            FieldLoader.Result result = FieldLoader.load(files("sun.json",
+                    "{\"id\":\"sun\",\"primitives\":[]}"));
+
+            assertTrue(result.isClean(), () -> "problems: " + result.problems());
+
+            FieldLayer sun = result.layer("sun").orElseThrow();
+            assertEquals(Transform.IDENTITY, sun.transform());
+            assertEquals(Animation.NONE, sun.animation());
+            assertEquals(1.0f, sun.alpha());
+            assertTrue(sun.visible());
+            assertEquals(BlendMode.ALPHA, sun.blendMode());
+        }
+
+        @Test
+        @DisplayName("an id on its own is a layer, as the record has always allowed")
+        void idAloneLoads() {
+            // FieldLayer.empty(id) is public API, so a file saying the same thing has
+            // to be readable or the two disagree about what a layer is.
+            FieldLoader.Result result = FieldLoader.load(files(
+                    "empty.json", "{\"id\":\"empty\"}"));
+
+            assertTrue(result.isClean(), () -> "problems: " + result.problems());
+            assertEquals(FieldLayer.empty("empty"), result.layer("empty").orElseThrow());
+        }
+
+        @Test
+        @DisplayName("what is written out is what a person could have typed")
+        void defaultsAreOmittedOnTheWayOut() {
+            String json = FieldCodec.write(FieldLayer.empty("empty")).toString();
+
+            assertEquals("{\"id\":\"empty\"}", json,
+                    "a layer at its defaults should be one key, not seven");
+        }
+
+        @Test
+        @DisplayName("a layer still cannot go without an id")
+        void idIsStillRequired() {
+            FieldLoader.Result result = FieldLoader.load(files(
+                    "nameless.json", "{\"primitives\":[]}"));
+
+            assertTrue(result.hasFailures(),
+                    "other content refers to a layer by id; a file without one is unusable");
+            assertTrue(result.problems().get(0).message().contains("id"),
+                    () -> "the reason has to name what is missing: "
+                            + result.problems().get(0).message());
+            // Enforced by the record's own requireNonNull, not by the absence of an
+            // annotation: adding skipIfNull to id still fails here, with a different
+            // and slightly better message. Asserting the rejection and the reason is
+            // what actually holds, so that is what this claims.
         }
     }
 

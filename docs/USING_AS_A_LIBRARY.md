@@ -589,6 +589,17 @@ after a write and a read is how a wrong annotation is caught.
 The second argument is a name for error messages. Make it a path a pack author would
 recognise; nothing else reads it.
 
+Only `id` is required. Every other component of a layer may be left out of a file, and
+means what the record's own constructor substitutes for it — so the smallest layer
+there is round-trips as one key:
+
+```java
+FieldCodec.write(FieldLayer.empty("empty")).toString();   // {"id":"empty"}
+```
+
+That matters more for reading than for writing: a file a person typed says `id` and
+`primitives` and trusts the rest to default, and that has to be readable.
+
 ### Loading layers from pack files
 
 `FieldCodec` reads one file. `FieldLoader` is many files from many packs, and what to
