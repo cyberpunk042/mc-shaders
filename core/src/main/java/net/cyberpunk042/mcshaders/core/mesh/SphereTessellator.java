@@ -140,8 +140,19 @@ public final class SphereTessellator {
     }
     
     /**
-     * Check if the algorithm requires direct rendering (TYPE_A/TYPE_E).
-     * These algorithms cannot be tessellated into a mesh.
+     * Whether {@code algorithm} has no mesh form of its own (TYPE_A/TYPE_E).
+     *
+     * <p>These draw overlapping cubes rather than a surface. {@link #tessellate} does
+     * not refuse them — it warns and substitutes a lat-lon sphere, so a caller gets
+     * geometry rather than nothing. This predicate is how a caller finds out that
+     * happened, because the mesh itself cannot tell it: non-empty, no exception, a
+     * different shape. Ask this before tessellating if the distinction matters.
+     *
+     * <p>{@code DirectRenderingSubstitutionTest} holds this to the {@code switch} in
+     * {@link #tessellate}, so the two cannot drift apart.
+     *
+     * @param algorithm the algorithm to ask about
+     * @return {@code true} if tessellating it yields a lat-lon substitute
      */
     public static boolean requiresDirectRendering(SphereAlgorithm algorithm) {
         return algorithm == SphereAlgorithm.TYPE_A || algorithm == SphereAlgorithm.TYPE_E;

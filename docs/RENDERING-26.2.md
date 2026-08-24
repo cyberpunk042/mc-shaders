@@ -608,24 +608,130 @@ A namespaced id, held in a static. Nothing registry-shaped, and nothing loader-s
 — this is vanilla API, which matters because it means the type and the node can live in
 shared code with only the registration call split per loader.
 
-What is still **not** established:
+### The NeoForge side, and the pairing in full
 
-- **The NeoForge-side registration mechanism.** Only Fabric was read, and NeoForge's is
-  not in the primer — the primer says so itself: *"This does not look at any specific
-  mod loader, just the changes to the vanilla classes."* Do not assume a mirror of
-  Fabric's; the fog and GUI paths each needed their own lookup and each found a
-  differently-shaped answer.
+Read from `neoforged/NeoForge` at branch `26.2.x`, in
+`src/client/java/net/neoforged/neoforge/client/event/`. The earlier 404s were a source-set
+mistake, worth naming because it will catch the next person too: NeoForge keeps client
+code in a **separate `src/client/` source set**, not under `src/main/`. Fabric API does
+the same. Nothing lives at `src/main/java/.../client`.
 
-  Paths already tried and 404'd, so the next attempt does not repeat them: the branch is
-  `26.2.x` (confirmed, and the default), but neither
-  `src/main/java/net/neoforged/neoforge/client/event`,
-  `src/main/java/net/neoforged/neoforge/client`, nor
-  `projects/neoforge/src/main/java/net/neoforged/neoforge/client/event` exists under it.
-  The repository root does carry both `src/` and `projects/`. `docs.neoforged.net` is
-  egress-blocked from this environment, as are `fabricmc.net` and `docs.fabricmc.net`.
+```java
+// RegisterFeatureRenderersEvent.java
+public final class RegisterFeatureRenderersEvent extends Event {
+    public <S extends SubmitNode> void register(
+            FeatureRendererType<S> type, FeatureRenderer<S> renderer)
+}
+```
 
-- **Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`**, which is
-  what decides how directly a `Mesh` maps onto it.
+*"Fired when a `FeatureRenderDispatcher` collects all `FeatureRenderer`s for mods to
+register renderers for custom `SubmitNode`s."* It fires on **`NeoForge.EVENT_BUS`** — the
+game bus — and **only on the logical client**, which is the same bus and the same
+failure mode already named for the two events in the NeoForge section below: subscribing
+on the mod bus produces no error and never runs.
+
+NeoForge also has a per-frame hook purpose-built for this, which Fabric reaches by a
+different name:
+
+```java
+// SubmitCustomGeometryEvent.java
+public final class SubmitCustomGeometryEvent extends Event {
+    public LevelRenderState getLevelRenderState()
+    public SubmitNodeCollector getSubmitNodeCollector()
+    public PoseStack getPoseStack()
+    public Iterable<? extends IRenderableSection> getRenderableSections()
+}
+```
+
+*"This event can be used to submit custom geometry outside of `BlockEntityRenderer`s,
+`EntityRenderer`s and Particles. Custom render state used by the submits must be
+extracted in `ExtractLevelRenderStateEvent` and stored in the provided
+`LevelRenderState`. This event is fired between particle submission and rendering of
+opaque submits."*
+
+The whole path pairs, and closely:
+
+| What | Fabric | NeoForge |
+|---|---|---|
+| Register the renderer | `FeatureRendererRegistry.register(type, Supplier<FeatureRenderer<T>>)`, at client init | `RegisterFeatureRenderersEvent#register(type, FeatureRenderer<S>)`, game bus, client only |
+| Submit per frame | `LevelRenderEvents.COLLECT_SUBMITS` → `LevelRenderContext#submitNodeCollector()` | `SubmitCustomGeometryEvent#getSubmitNodeCollector()` |
+| Extract render state | `LevelExtractionEvents.END_EXTRACTION` | `ExtractLevelRenderStateEvent` |
+
+One difference, small but real: Fabric takes a **`Supplier<FeatureRenderer<T>>`**, NeoForge
+takes the **instance**.
+
+The two submit phases describe the same moment in the frame in almost the same words.
+Fabric's `COLLECT_SUBMITS` is *"called after opaque terrain is drawn … and all submit
+nodes from entities, block entities, and particles are added to the submit node storage,
+and before any submit geometry is drawn"*, and says *"Use this event to add additional
+submits to `LevelRenderContext#submitNodeCollector()`."* NeoForge's is *"fired between
+particle submission and rendering of opaque submits."*
+
+**The extraction row is the one already built.** Both loaders require custom render state
+for a submit to be extracted during the extraction phase — and those are the exact two
+events `WorldSampler` already sits on, per [the NeoForge section](#the-neoforge-side-read-from-its-262-source)
+below. The per-frame hook this project established for sampling the world is the same
+hook a field renderer needs for its state. That is a pairing that already exists in this
+repository rather than one to go and build.
+
+### The familiar idiom is not gone, it moved
+
+The last unknown here was how vertices actually reach a `StagedVertexBuffer`. The answer
+is that for the common case **you never touch one**, and the code you write is very close
+to what a 26.1 mod already looked like:
+
+> *"If your `SubmitNode` contains a `RenderType`, then you can extend
+> `RenderTypeFeatureRenderer` instead. `RenderTypeFeatureRenderer` functions similarly to
+> the now removed `MultiBufferSource`, where within `buildGroup`, the `VertexConsumer`
+> can be obtained from the render type via `getVertexBuffer`."*
+
+```java
+public class ExampleFeatureRenderer extends RenderTypeFeatureRenderer<ExampleSubmit> {
+    // The unique identifier that represents this feature renderer.
+    public static final FeatureRendererType<ExampleSubmit> TYPE =
+            FeatureRenderer.type("examplemod:example_submit");
+
+    @Override
+    protected void buildGroup(FeatureFrameContext context, List<ExampleSubmit> submits) {
+        // For each submit
+        for (ExampleSubmit submit : submits) {
+            // Get the `VertexConsumer` to write to
+            VertexConsumer builder = this.getVertexBuilder(submit.renderType());
+
+            // Write the vertex data
+            builder.addVertex(...);
+        }
+    }
+}
+```
+
+**`VertexConsumer` was never removed.** `MultiBufferSource` was, and the section above
+that quotes its removal is easy to read as though the whole idiom went with it. It did
+not: `VertexConsumer` is still how vertices are written, and `RenderTypeFeatureRenderer`
+is the thing that hands you one.
+
+Three consequences, and they all shrink the job:
+
+- **One method, not five.** `buildGroup(FeatureFrameContext, List<T>)` replaces the
+  `beginPrepare`/`prepareGroup`/`finishPrepare`/`executeGroup`/`finishExecute` lifecycle
+  for anything that can express itself as a `RenderType`.
+- **`StagedVertexBuffer` becomes an implementation detail.** The question of whether it
+  takes a caller-supplied `VertexFormat` stops mattering: the `RenderType` carries the
+  format, exactly as it did before 26.2.
+- **The precondition is already met.** The base class applies *"if your `SubmitNode`
+  contains a `RenderType`"*, and the primer's own example node carries one — as would a
+  field submit, since a layer already picks a blend mode.
+
+> **A discrepancy in the source, left as found.** The prose says `getVertexBuffer`; the
+> code example says `getVertexBuilder`. One of them is a typo and this document does not
+> know which. Whichever compiles is the answer, and finding out costs one CI round.
+
+With that, nothing between here and a first renderer is unread. What remains is a
+decision rather than a lookup — see the two consequences below.
+
+> `docs.neoforged.net`, `fabricmc.net` and `docs.fabricmc.net` are all egress-blocked
+> from this environment. Everything above came from `github.com` and
+> `raw.githubusercontent.com`, which are reachable — go there first.
 
 ### What this means for the field renderer
 
@@ -635,12 +741,12 @@ renderer with a five-method lifecycle, registered per loader.
 
 Two consequences worth stating before anyone starts:
 
-1. **The work is loader-split in a way the fog and GUI paths were not.** Those found
-   Fabric/NeoForge equivalents that let `vanilla/` hold one implementation. Only the
-   Fabric half of registration is established above, so assume a per-loader entry point
-   calling into shared code until the NeoForge side is read too. The submit node, the
-   renderer and the mesh-to-buffer work are the shared part; only registration and the
-   per-frame hook look loader-specific.
+1. **The loader split is narrow, and now measured.** Both halves are established
+   above and they pair row for row. The submit node, the `FeatureRendererType`, the
+   `FeatureRenderer` and the mesh-to-buffer work are all vanilla API and belong in
+   `vanilla/`; only two calls differ — registering the renderer and reaching the
+   per-frame collector. That is the same shape as the fog and GUI paths after all, not a
+   departure from them.
 2. **Screen-space is a real alternative, not a fallback.** `the-virus-block-mc`'s own
    `field_visual_*` effects are post-processing chains, not tessellated geometry, and
    this repository's chain and shader infrastructure already targets that path. Whether

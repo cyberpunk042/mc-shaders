@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.stream.Stream;
 import net.cyberpunk042.mcshaders.codec.FieldCodec;
 import net.cyberpunk042.mcshaders.core.field.FieldLayer;
+import net.cyberpunk042.mcshaders.core.field.LayerGeometry;
 import net.cyberpunk042.mcshaders.core.field.SimplePrimitive;
 import net.cyberpunk042.mcshaders.core.shape.SphereShape;
 import org.junit.jupiter.api.DisplayName;
@@ -44,6 +45,28 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
  * this repository and must not be. It is CC-licensed where this repository is MIT, and
  * {@code PORTING.md} calls embedding one in the other "a design error, not a packaging
  * detail".
+ *
+ * <h2>Two steps, counted separately</h2>
+ *
+ * <p>A file is counted <em>read</em> when {@link FieldCodec} parses it and <em>built</em>
+ * when {@link LayerGeometry} turns the result into pieces. They are separate columns
+ * because they fail for unrelated reasons — an unknown JSON key and a shape with no
+ * tessellator are different problems — and reporting one number would hide whichever
+ * came second.
+ *
+ * <p><em>empty</em> is the third column and the reason the second is not enough: a build
+ * that succeeds and produces nothing but empty meshes is, from the outside,
+ * indistinguishable from one that worked. That is the same failure this scan already
+ * refuses to commit about paths, applied one stage later.
+ *
+ * <p>What none of the three columns can see is a <em>substitution</em>. The
+ * {@code TYPE_A} and {@code TYPE_E} sphere algorithms have no mesh form, so the
+ * tessellator logs a fallback and returns a lat-lon sphere instead: non-empty, no
+ * exception, different shape. Counting that as built is honest about what was measured
+ * and misleading about what happened, so it is written down in
+ * {@code docs/VIRUS-BLOCK-FIELD-STATE.md} rather than inferred from a log line. Reading
+ * the log back here would tie this scan to a logging backend to buy one number, which
+ * is not a trade worth making for a tool whose whole point is that it is small.
  *
  * <h2>It asserts that it looked, not what it found</h2>
  *
@@ -75,7 +98,8 @@ class FieldContentScanTest {
                 SimplePrimitive.of("p", SphereShape.of(1.0f).getType(), SphereShape.of(1.0f)))));
     }
 
-    private record Tally(int files, int read, Map<String, Integer> causes) {
+    private record Tally(int files, int read, int built, int empty,
+            Map<String, Integer> readCauses, Map<String, Integer> buildCauses) {
     }
 
     @Test
@@ -108,12 +132,18 @@ class FieldContentScanTest {
     }
 
     private static void append(StringBuilder out, String dir, String slot, Tally tally) {
-        out.append(String.format("%-20s %-18s %2d/%2d read%n",
-                dir, slot, tally.read(), tally.files()));
-        tally.causes().entrySet().stream()
+        out.append(String.format("%-20s %-18s %2d/%2d read   %2d built   %2d empty%n",
+                dir, slot, tally.read(), tally.files(), tally.built(), tally.empty()));
+        causes(out, "read", tally.readCauses());
+        causes(out, "build", tally.buildCauses());
+    }
+
+    private static void causes(StringBuilder out, String step, Map<String, Integer> causes) {
+        causes.entrySet().stream()
                 .sorted((a, b) -> b.getValue() - a.getValue())
                 .forEach(cause -> out.append("      ").append(cause.getValue())
-                        .append("x  ").append(cause.getKey()).append('\n'));
+                        .append("x  ").append(step).append(": ").append(cause.getKey())
+                        .append('\n'));
     }
 
     /** A {@code field_shapes} file is a shape, wrapped in a primitive that carries it. */
@@ -145,7 +175,7 @@ class FieldContentScanTest {
 
     private static Tally tally(Path dir, Wrapper wrapper) {
         if (!Files.isDirectory(dir)) {
-            return new Tally(0, 0, Map.of());
+            return new Tally(0, 0, 0, 0, Map.of(), Map.of());
         }
         List<Path> files = new ArrayList<>();
         try (Stream<Path> listing = Files.list(dir)) {
@@ -155,20 +185,37 @@ class FieldContentScanTest {
         }
 
         int read = 0;
-        Map<String, Integer> causes = new LinkedHashMap<>();
+        int built = 0;
+        int empty = 0;
+        Map<String, Integer> readCauses = new LinkedHashMap<>();
+        Map<String, Integer> buildCauses = new LinkedHashMap<>();
         for (Path file : files) {
             String name = file.getFileName().toString();
+            FieldLayer layer;
             try {
                 JsonElement json = JsonParser.parseString(Files.readString(file));
-                FieldCodec.read(wrapper.wrap(json), name);
+                layer = FieldCodec.read(wrapper.wrap(json), name);
                 read++;
             } catch (IOException e) {
                 throw new UncheckedIOException(e);
             } catch (RuntimeException e) {
-                causes.merge(reason(e), 1, Integer::sum);
+                readCauses.merge(reason(e), 1, Integer::sum);
+                continue;
+            }
+            try {
+                // IGNORE, because a scan measures content and must not decide it: any
+                // other policy would be this test inventing how radiusMatch resizes.
+                List<LayerGeometry.Piece> pieces =
+                        LayerGeometry.build(layer, LayerGeometry.RadiusPolicy.IGNORE);
+                built++;
+                if (pieces.stream().allMatch(piece -> piece.mesh().isEmpty())) {
+                    empty++;
+                }
+            } catch (RuntimeException e) {
+                buildCauses.merge(reason(e), 1, Integer::sum);
             }
         }
-        return new Tally(files.size(), read, causes);
+        return new Tally(files.size(), read, built, empty, readCauses, buildCauses);
     }
 
     /** The message without the file name, so identical causes group instead of listing. */
