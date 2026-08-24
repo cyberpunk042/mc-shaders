@@ -94,6 +94,7 @@ class FieldGuideExampleTest {
         // Deliberately ASCII: a snippet spanning the sentence's em-dash would make
 // this assertion depend on the file encoding as well as on the wording.
         assertGuideShows("`hasFailures()` distinguishes the two");
+        assertGuideShows(".filter(p -> p.kind() == FieldLoader.Problem.Kind.UNRESOLVED_LINK)");
     }
 
     @Test

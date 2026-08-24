@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import net.cyberpunk042.mcshaders.core.field.FieldLayer;
+import net.cyberpunk042.mcshaders.core.field.LinkResolver;
 
 /**
  * Turns a set of pack files into the field layers they declare.
@@ -84,7 +85,13 @@ public final class FieldLoader {
             return problems.isEmpty();
         }
 
-        /** Whether anything was skipped, as opposed to merely overridden. */
+        /**
+         * Whether anything failed to load.
+         *
+         * <p>An override is not a failure and neither is a broken link: both layers
+         * loaded. A broken link is still worth reading {@link #problems()} for, since
+         * it is a mistake rather than an intent.
+         */
         public boolean hasFailures() {
             return problems.stream().anyMatch(p -> p.kind() == Problem.Kind.SKIPPED);
         }
@@ -102,14 +109,19 @@ public final class FieldLoader {
             /** The file did not parse, and its layer did not load. */
             SKIPPED,
             /** A layer replaced one of the same id from an earlier file. */
-            OVERRIDDEN
+            OVERRIDDEN,
+            /**
+             * A link in the layer names something it cannot reach, so it will
+             * resolve to nothing. The layer itself loaded.
+             */
+            UNRESOLVED_LINK
         }
 
         @Override
         public String toString() {
             return switch (kind) {
                 case SKIPPED -> "skipped " + source + ": " + message;
-                case OVERRIDDEN -> source + ": " + message;
+                case OVERRIDDEN, UNRESOLVED_LINK -> source + ": " + message;
             };
         }
     }
@@ -140,6 +152,17 @@ public final class FieldLoader {
             if (previous != null) {
                 problems.add(new Problem(Problem.Kind.OVERRIDDEN, source,
                         "layer '" + parsed.id() + "' overrides the one from " + previous));
+            }
+            // A link naming something it cannot reach resolves to nothing, silently:
+            // LinkResolver.resolveRadius returns -1 for an unknown target exactly as it
+            // does for "no link at all", so the two are indistinguishable downstream.
+            // LinkResolver.validate has always been able to tell them apart and was
+            // called by nothing outside tests. This is where it earns its place — a
+            // typo in a pack file is a pack author's problem, and this is the channel
+            // for those.
+            for (String error : LinkResolver.validate(parsed.primitives())) {
+                problems.add(new Problem(Problem.Kind.UNRESOLVED_LINK, source,
+                        "layer '" + parsed.id() + "': " + error));
             }
             byId.put(parsed.id(), parsed);
         }

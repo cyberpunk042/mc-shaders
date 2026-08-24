@@ -570,6 +570,39 @@ that step**. The renderer consumed `offset`, `scale`, `color`, `alpha`, `orbitCo
 nothing on screen. `LinkResolverTest` pins both halves: that resolving alone leaves the
 shape alone, and that doing the last step is what makes the mesh change size.
 
+### Building a whole layer at once
+
+Everything above is the sequence per primitive. `LayerGeometry` is that sequence for a
+whole layer, which is what a renderer actually wants:
+
+```java
+List<LayerGeometry.Piece> pieces =
+        LayerGeometry.build(layer, LayerGeometry.RadiusPolicy.IGNORE);
+```
+
+Each `Piece` carries the primitive, its tessellated `mesh`, the `transform` (the
+layer's, the primitive's and whatever its links resolved to, composed through
+`TransformStack`'s rules), and the `appearance` with resolved colour and alpha applied
+and the layer's alpha multiplied in.
+
+**The radius policy is a required argument, and that is the point.** It is the one step
+core will not choose for you, so rather than leaving it in a paragraph you might skip,
+it sits in the signature where it has to be answered. `RadiusPolicy.IGNORE` is the
+answer "do what the old renderer did" — still available, but now written at the call
+site instead of being an omission nobody notices. A policy that resizes looks like:
+
+```java
+LayerGeometry.build(layer, (shape, radius) ->
+        shape instanceof SphereShape ? SphereShape.of(radius) : shape);
+```
+
+Two things it deliberately does not do. **Animation is untouched** — spin, pulse and
+orbit are functions of time and this builds geometry for no particular time, so `Piece`
+hands back the primitive for a renderer to drive against its own clock. **Visibility is
+not enforced** — a hidden layer still builds, because an editor previewing one wants
+the geometry and returning nothing would look exactly like a failure. Ask
+`layer.isDrawable()` yourself.
+
 ### Reading and writing layers as JSON
 
 `FieldCodec` is one document in each direction. It is in `common` rather than `core`
@@ -619,6 +652,23 @@ loud failure into a silent one.** Log `problems()`.
 Two files declaring the same `id` is not an error: the later one wins, because that is
 what a load order means. `hasFailures()` distinguishes the two — it is true only when
 something was skipped, not when something was overridden.
+
+A third kind is worth knowing about. A `PrimitiveLink` naming a primitive that is not
+there — a typo, a self-reference, a link pointing forwards — resolves to nothing, and
+it does so *silently*: `LinkResolver.resolveRadius` returns `-1` for an unknown target
+exactly as it does for "no link at all", so downstream the two are indistinguishable.
+`FieldLoader` runs `LinkResolver.validate` on every layer it loads and reports each one
+as `Kind.UNRESOLVED_LINK`:
+
+```java
+FieldLoader.load(files).problems().stream()
+        .filter(p -> p.kind() == FieldLoader.Problem.Kind.UNRESOLVED_LINK)
+        .forEach(p -> LOGGER.warn("{}", p));
+```
+
+The layer still loads — one bad link should not cost you the primitives that work — so
+`hasFailures()` stays false. It is still a mistake rather than an intent, which is the
+difference between it and an override, and the reason it is worth logging separately.
 
 `result.layers()` is keyed by id in load order, and unmodifiable. There is no
 `FieldRegistry` behind it: a registry would be a type wrapping a map without adding a
