@@ -206,6 +206,7 @@ It cannot tell you whether the GLSL compiles. That needs a driver.
 | [DATAPACKS-26.2.md](docs/DATAPACKS-26.2.md) · [BLOCKS-26.2.md](docs/BLOCKS-26.2.md) · [PORTALS-26.2.md](docs/PORTALS-26.2.md) | The same, per area |
 | [PORTING.md](docs/PORTING.md) | What came from `the-virus-block-mc`, and the licence split |
 | [VIRUS-BLOCK-SHADER-STATE.md](docs/VIRUS-BLOCK-SHADER-STATE.md) | What the checker found in those packs |
+| [VIRUS-BLOCK-FIELD-STATE.md](docs/VIRUS-BLOCK-FIELD-STATE.md) | How much of that mod's field content this engine can read |
 
 Every 26.2 document says what was verified, from which source, **and what was not**.
 That convention exists because this project has been wrong before by remembering an API
