@@ -498,30 +498,65 @@ The dispatcher is reached at
 `FeatureRenderDispatcher` *"now takes in a `SubmitNodeStorage` as part of its render
 methods."*
 
-### Registration is loader-specific, and this is the open end
+### Registration, read out of the Fabric API's own 26.2 source
 
 The primer does not give a mod-facing registration API. It says only: *"Assume we can
 inject into the end of the `FeatureRendererDispatcher` constructor and that
 `featureRenderers` is accessible."* That is an assumption for the sake of its example,
 not an entry point.
 
-**Fabric has one.** A search of the 26.2 modding material reports that *"Fabric API
-0.153.0+26.2 added an API for registering custom `FeatureRenderer`s."* This repository
-pins `mc_26_2_fabric_api=0.157.0+26.2`, so the capability is present at the version
-already in [gradle.properties](../gradle.properties) — **no version bump is needed to
-start.**
+**Fabric has a real one**, and it is two calls. Both were read from
+`FabricMC/fabric-api` at branch `26.2`, in
+`fabric-rendering-v1/src/client/java/net/fabricmc/fabric/api/client/rendering/v1/` —
+not from a search summary, and not remembered.
 
-What is **not** established, and must be read from source before anything is typed:
+```java
+// FeatureRendererRegistry.java
+public final class FeatureRendererRegistry {
+    public static <T extends SubmitNode> void register(
+            FeatureRendererType<T> type, Supplier<FeatureRenderer<T>> renderer)
+}
 
-- The exact Fabric class and method that registers a `FeatureRenderer`. `fabricmc.net`
-  and `docs.fabricmc.net` are both unreachable from this environment (egress-blocked),
-  so this has to come from the `FabricMC/fabric-api` sources or from a mod that uses
-  them. **A search for it surfaced `LivingEntityFeatureRendererRegistrationCallback`,
-  which is a 1.20-era API for entity feature renderers and a different thing entirely.
-  It is named here so nobody pattern-matches onto it.**
-- The NeoForge-side registration mechanism.
-- Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`, which is what
-  decides how directly a `Mesh` maps onto it.
+// FabricOrderedSubmitNodeCollector.java
+public interface FabricOrderedSubmitNodeCollector {
+    default <T extends SubmitNode> void submitCustom(SubmitRenderPhase<T> phase, T node)
+}
+```
+
+`FeatureRendererRegistry`'s class javadoc ties the two together: *"The registry for
+custom `FeatureRenderer`s. Custom feature renderers must be registered during client
+initialization for them to be usable with `submitCustom`."*
+
+And `submitCustom`'s own javadoc is the sentence that settles the original question:
+*"**Submit an arbitrary `SubmitNode`** with a custom `FeatureRendererType`."* Its
+parameters are documented as *"The phase this node will be rendered with"* and *"The
+node to render"*, and its type parameter as *"The kind of node we're rendering, either a
+`SubmitNode` or `TranslucentSubmit`."* It points at `SubmitRenderPhases` for *"Vanilla's
+built-in render phases."*
+
+So on Fabric the shape is: define a `SubmitNode` subtype and a `FeatureRendererType`
+for it, implement `FeatureRenderer`, `register` during **client initialisation**, and
+call `submitCustom` per frame. Arbitrary geometry is not a workaround here — it is what
+the API says it is for.
+
+This repository pins `mc_26_2_fabric_api=0.157.0+26.2`, and the capability arrived in
+`0.153.0+26.2`, so **no version bump is needed to start.**
+
+> **A name to not pattern-match onto.** Searching for this repeatedly surfaces
+> `LivingEntityFeatureRendererRegistrationCallback` — a 1.20-era API for *entity*
+> feature renderers (armour, elytra), which is a different thing. The 26.2 tree makes
+> the distinction visible: `LivingEntityFeatureRenderEvents.java` sits in the same
+> directory as `FeatureRendererRegistry.java`, as a separate file. Two meanings of
+> "feature renderer" live side by side.
+
+What is still **not** established:
+
+- **The NeoForge-side registration mechanism.** Only Fabric was read. Do not assume a
+  mirror; the fog and GUI paths each needed their own lookup.
+- **Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`**, which is
+  what decides how directly a `Mesh` maps onto it.
+- **The shape of `FeatureRendererType`** — how one is created or declared. The
+  registration signature names it; nothing read here shows it being constructed.
 
 ### What this means for the field renderer
 
@@ -532,9 +567,11 @@ renderer with a five-method lifecycle, registered per loader.
 Two consequences worth stating before anyone starts:
 
 1. **The work is loader-split in a way the fog and GUI paths were not.** Those found
-   Fabric/NeoForge equivalents that let `vanilla/` hold one implementation. Registration
-   here has no such pairing established yet, so assume a per-loader entry point calling
-   into shared code until proven otherwise.
+   Fabric/NeoForge equivalents that let `vanilla/` hold one implementation. Only the
+   Fabric half of registration is established above, so assume a per-loader entry point
+   calling into shared code until the NeoForge side is read too. The submit node, the
+   renderer and the mesh-to-buffer work are the shared part; only registration and the
+   per-frame hook look loader-specific.
 2. **Screen-space is a real alternative, not a fallback.** `the-virus-block-mc`'s own
    `field_visual_*` effects are post-processing chains, not tessellated geometry, and
    this repository's chain and shader infrastructure already targets that path. Whether
