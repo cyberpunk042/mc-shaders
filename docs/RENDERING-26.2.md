@@ -674,11 +674,60 @@ below. The per-frame hook this project established for sampling the world is the
 hook a field renderer needs for its state. That is a pairing that already exists in this
 repository rather than one to go and build.
 
-What is still **not** established:
+### The familiar idiom is not gone, it moved
 
-- **Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`**, which is
-  what decides how directly a `Mesh` maps onto it. This is now the only unknown between
-  here and a first renderer.
+The last unknown here was how vertices actually reach a `StagedVertexBuffer`. The answer
+is that for the common case **you never touch one**, and the code you write is very close
+to what a 26.1 mod already looked like:
+
+> *"If your `SubmitNode` contains a `RenderType`, then you can extend
+> `RenderTypeFeatureRenderer` instead. `RenderTypeFeatureRenderer` functions similarly to
+> the now removed `MultiBufferSource`, where within `buildGroup`, the `VertexConsumer`
+> can be obtained from the render type via `getVertexBuffer`."*
+
+```java
+public class ExampleFeatureRenderer extends RenderTypeFeatureRenderer<ExampleSubmit> {
+    // The unique identifier that represents this feature renderer.
+    public static final FeatureRendererType<ExampleSubmit> TYPE =
+            FeatureRenderer.type("examplemod:example_submit");
+
+    @Override
+    protected void buildGroup(FeatureFrameContext context, List<ExampleSubmit> submits) {
+        // For each submit
+        for (ExampleSubmit submit : submits) {
+            // Get the `VertexConsumer` to write to
+            VertexConsumer builder = this.getVertexBuilder(submit.renderType());
+
+            // Write the vertex data
+            builder.addVertex(...);
+        }
+    }
+}
+```
+
+**`VertexConsumer` was never removed.** `MultiBufferSource` was, and the section above
+that quotes its removal is easy to read as though the whole idiom went with it. It did
+not: `VertexConsumer` is still how vertices are written, and `RenderTypeFeatureRenderer`
+is the thing that hands you one.
+
+Three consequences, and they all shrink the job:
+
+- **One method, not five.** `buildGroup(FeatureFrameContext, List<T>)` replaces the
+  `beginPrepare`/`prepareGroup`/`finishPrepare`/`executeGroup`/`finishExecute` lifecycle
+  for anything that can express itself as a `RenderType`.
+- **`StagedVertexBuffer` becomes an implementation detail.** The question of whether it
+  takes a caller-supplied `VertexFormat` stops mattering: the `RenderType` carries the
+  format, exactly as it did before 26.2.
+- **The precondition is already met.** The base class applies *"if your `SubmitNode`
+  contains a `RenderType`"*, and the primer's own example node carries one — as would a
+  field submit, since a layer already picks a blend mode.
+
+> **A discrepancy in the source, left as found.** The prose says `getVertexBuffer`; the
+> code example says `getVertexBuilder`. One of them is a typo and this document does not
+> know which. Whichever compiles is the answer, and finding out costs one CI round.
+
+With that, nothing between here and a first renderer is unread. What remains is a
+decision rather than a lookup — see the two consequences below.
 
 > `docs.neoforged.net`, `fabricmc.net` and `docs.fabricmc.net` are all egress-blocked
 > from this environment. Everything above came from `github.com` and
