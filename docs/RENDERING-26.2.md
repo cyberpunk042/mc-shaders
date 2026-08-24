@@ -112,6 +112,16 @@ in that JSON, `TargetSpec` is where it goes.
 Full-screen post-processing passes do not need any of it. Worth knowing before
 someone reaches for the familiar idiom.
 
+> **Corrected 2026-08-24, and the correction matters.** The paraphrase above ends
+> at the removal and reads as though nothing replaced it. The primer's own sentence
+> does not: *"The feature rendering system has been overhauled to **completely
+> replace** `MultiBufferSource` and any direct vertex uploads outside of vanilla
+> chunk rendering."* There is a replacement, it is named, and a mod can draw
+> arbitrary geometry through it. See
+> [What replaced immediate mode](#what-replaced-immediate-mode-the-feature-rendering-system)
+> below. Read as written, this section would have retired the field renderer before
+> it was attempted.
+
 ## The post-effect chain hook points, which are still not established
 
 > Renamed from "The Fabric hook points" once the fog hook below turned out to be
@@ -434,6 +444,209 @@ that a wrong signature here costs a CI round-trip apiece, and reading cost none.
 
 The same table is therefore safe to build on. The list of what did *not* change is
 proven by the same run.
+
+## What replaced immediate mode: the feature rendering system
+
+**Source.** The same NeoForged 26.2 primer, read again for this specifically, plus a
+web search that surfaced the Fabric API version. Quotes below are the primer's words.
+Where something is *not* on the page, this says so rather than filling the gap.
+
+This is what a field renderer has to be built on, because `LayerGeometry` produces
+`Mesh` — vertices and indices — and the old idiom for getting those onto the screen is
+the one that was removed.
+
+### The three things a custom feature needs
+
+> *"three things a required: a `SubmitNode` to represent the data of the submitted
+> feature, the `FeatureRenderPhase`(s) to store the `SubmitNode`s and supply them to
+> the correct renderer, and the `FeatureRenderer` responsible for rendering the
+> submissions."*
+
+`SubmitNode` is *"a node for some submitted element that holds a record of the
+submitted data that is used by the specified `FeatureRenderer`."* Two interfaces it
+can carry are named: `TranslucentSubmit`, which supplies `distanceToCameraSq()` for
+ordering, and `BatchableSubmit`, which supplies `batchKey()` for grouping. The primer
+shows a custom `ExampleSubmit` implementing both — **which is the load-bearing fact
+here: mods define their own submit types.**
+
+`FeatureRenderPhase` is *"responsible for collecting these submissions and supplying
+them to an `$Output` for rendering"* and defines three methods: `submit` — *"what the
+`OrderedSubmitNodeCollector#submit*` methods delegate to"* — `isEmpty`, and `sortInto`
+*"for passing the submissions to their appropriate group via `$Output#accept`."*
+
+### The renderer's lifecycle
+
+> *"The rendering process is broken into two sections: preparation and execution."*
+
+| Phase | Methods | What happens |
+|---|---|---|
+| Preparation | `beginPrepare` → `prepareGroup` → `finishPrepare` | *"turning the submitted elements into an intermediate state, usually buffer data stored in the `StagedVertexBuffer`"* |
+| Execution | `executeGroup` → `finishExecute` | `executeGroup` is *"for using a `RenderPass` to draw the target color and depth texture"*; `finishExecute` *"for cleaning up the renderer for the next render frame"* |
+
+`StagedVertexBuffer` is where a mod's own vertices go. One constraint is called out
+explicitly: *"the only thing that should be stored during `prepareGroup` is the draw
+reference (for `StagedVertexBuffer` this is `StagedVertexBuffer$Draw`)."*
+
+Related, and in this project's favour: `VertexFormat` and `VertexFormatElement` were
+*"partially rewritten into a more dynamic framework"*, with elements *"constructed when
+building the `VertexFormat` by adding attributes via `$Builder#addAttribute`."* A mesh
+whose vertex layout is decided by content rather than by a fixed enum has somewhere to
+go.
+
+The dispatcher is reached at
+`Minecraft.getInstance().gameRenderer.featureRenderDispatcher()`, and
+`FeatureRenderDispatcher` *"now takes in a `SubmitNodeStorage` as part of its render
+methods."*
+
+### Registration, read out of the Fabric API's own 26.2 source
+
+The primer does not give a mod-facing registration API. It says only: *"Assume we can
+inject into the end of the `FeatureRendererDispatcher` constructor and that
+`featureRenderers` is accessible."* That is an assumption for the sake of its example,
+not an entry point.
+
+**Fabric has a real one**, and it is two calls. Both were read from
+`FabricMC/fabric-api` at branch `26.2`, in
+`fabric-rendering-v1/src/client/java/net/fabricmc/fabric/api/client/rendering/v1/` —
+not from a search summary, and not remembered.
+
+```java
+// FeatureRendererRegistry.java
+public final class FeatureRendererRegistry {
+    public static <T extends SubmitNode> void register(
+            FeatureRendererType<T> type, Supplier<FeatureRenderer<T>> renderer)
+}
+
+// FabricOrderedSubmitNodeCollector.java
+public interface FabricOrderedSubmitNodeCollector {
+    default <T extends SubmitNode> void submitCustom(SubmitRenderPhase<T> phase, T node)
+}
+```
+
+`FeatureRendererRegistry`'s class javadoc ties the two together: *"The registry for
+custom `FeatureRenderer`s. Custom feature renderers must be registered during client
+initialization for them to be usable with `submitCustom`."*
+
+And `submitCustom`'s own javadoc is the sentence that settles the original question:
+*"**Submit an arbitrary `SubmitNode`** with a custom `FeatureRendererType`."* Its
+parameters are documented as *"The phase this node will be rendered with"* and *"The
+node to render"*, and its type parameter as *"The kind of node we're rendering, either a
+`SubmitNode` or `TranslucentSubmit`."* It points at `SubmitRenderPhases` for *"Vanilla's
+built-in render phases."*
+
+So on Fabric the shape is: define a `SubmitNode` subtype and a `FeatureRendererType`
+for it, implement `FeatureRenderer`, `register` during **client initialisation**, and
+call `submitCustom` per frame. Arbitrary geometry is not a workaround here — it is what
+the API says it is for.
+
+This repository pins `mc_26_2_fabric_api=0.157.0+26.2`, and the capability arrived in
+`0.153.0+26.2`, so **no version bump is needed to start.**
+
+> **A name to not pattern-match onto.** Searching for this repeatedly surfaces
+> `LivingEntityFeatureRendererRegistrationCallback` — a 1.20-era API for *entity*
+> feature renderers (armour, elytra), which is a different thing. The 26.2 tree makes
+> the distinction visible: `LivingEntityFeatureRenderEvents.java` sits in the same
+> directory as `FeatureRendererRegistry.java`, as a separate file. Two meanings of
+> "feature renderer" live side by side.
+
+### What a `SubmitNode` actually looks like
+
+The primer's own example, quoted:
+
+```java
+public record ExampleSubmit(Matrix4fc pose, RenderType type, ...)
+    implements TranslucentSubmit, BatchableSubmit {
+    @Override
+    public FeatureRendererType<? extends TranslucentSubmit> featureType() {
+        // The identifier for our feature renderer.
+    }
+
+    @Override
+    public Object batchKey() {
+        // The batch key should be an object that allows the renderer or
+        // phase to hold its state for as long as possible before switching.
+        return this.type;
+    }
+
+    @Override
+    public float distanceToCameraSq() {
+        // Compute the camera distance.
+        return TranslucentSubmit.computeDistanceToCameraSq(this.pose);
+    }
+}
+```
+
+Three things worth noticing. It is **a record**, so it is the same kind of object this
+project already passes around. It carries a `Matrix4fc pose` and a `RenderType` — and
+`LayerGeometry.Piece` already carries a `Transform` and an `Appearance`, so the mapping
+is a conversion rather than a redesign; the mesh goes where the `...` is. And
+`distanceToCameraSq` has a supplied implementation,
+`TranslucentSubmit.computeDistanceToCameraSq(pose)`, so ordering is not ours to get
+right.
+
+### The phase is usually not yours to write
+
+> *"If you are making use of `SubmitNode` or `TranslucentSubmit` with no additional
+> sorting behavior, then you can instead make use of `SimpleFeatureRenderPhase` and
+> `TranslucentFeatureRenderPhase`, respectively."*
+
+That removes one of the three pieces for the common case. A field layer wants
+translucency and has no ordering requirement beyond camera distance, which is exactly
+what `TranslucentFeatureRenderPhase` covers. Assume the phase is built-in until
+something specific forces otherwise.
+
+### A `FeatureRendererType` is made by a static factory
+
+The registration signature names the type; the primer shows one being built:
+
+```java
+public static final FeatureRendererType<ExampleSubmit> TYPE =
+        FeatureRenderer.type("examplemod:example_submit");
+```
+
+A namespaced id, held in a static. Nothing registry-shaped, and nothing loader-specific
+— this is vanilla API, which matters because it means the type and the node can live in
+shared code with only the registration call split per loader.
+
+What is still **not** established:
+
+- **The NeoForge-side registration mechanism.** Only Fabric was read, and NeoForge's is
+  not in the primer — the primer says so itself: *"This does not look at any specific
+  mod loader, just the changes to the vanilla classes."* Do not assume a mirror of
+  Fabric's; the fog and GUI paths each needed their own lookup and each found a
+  differently-shaped answer.
+
+  Paths already tried and 404'd, so the next attempt does not repeat them: the branch is
+  `26.2.x` (confirmed, and the default), but neither
+  `src/main/java/net/neoforged/neoforge/client/event`,
+  `src/main/java/net/neoforged/neoforge/client`, nor
+  `projects/neoforge/src/main/java/net/neoforged/neoforge/client/event` exists under it.
+  The repository root does carry both `src/` and `projects/`. `docs.neoforged.net` is
+  egress-blocked from this environment, as are `fabricmc.net` and `docs.fabricmc.net`.
+
+- **Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`**, which is
+  what decides how directly a `Mesh` maps onto it.
+
+### What this means for the field renderer
+
+The path exists and is buildable. It is also a different shape from the old idiom: not
+"get a `VertexConsumer`, push vertices, done", but a submit node, a phase, and a
+renderer with a five-method lifecycle, registered per loader.
+
+Two consequences worth stating before anyone starts:
+
+1. **The work is loader-split in a way the fog and GUI paths were not.** Those found
+   Fabric/NeoForge equivalents that let `vanilla/` hold one implementation. Only the
+   Fabric half of registration is established above, so assume a per-loader entry point
+   calling into shared code until the NeoForge side is read too. The submit node, the
+   renderer and the mesh-to-buffer work are the shared part; only registration and the
+   per-frame hook look loader-specific.
+2. **Screen-space is a real alternative, not a fallback.** `the-virus-block-mc`'s own
+   `field_visual_*` effects are post-processing chains, not tessellated geometry, and
+   this repository's chain and shader infrastructure already targets that path. Whether
+   fields should be drawn as geometry at all, or raymarched as an effect, is a design
+   question this document does not answer — but it is now clear that both are open,
+   and only one of them requires the system described above.
 
 ## Cross-references
 
