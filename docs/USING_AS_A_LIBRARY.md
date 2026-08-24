@@ -570,6 +570,56 @@ that step**. The renderer consumed `offset`, `scale`, `color`, `alpha`, `orbitCo
 nothing on screen. `LinkResolverTest` pins both halves: that resolving alone leaves the
 shape alone, and that doing the last step is what makes the mesh change size.
 
+### Reading and writing layers as JSON
+
+`FieldCodec` is one document in each direction. It is in `common` rather than `core`
+for the same reason `BindingCodec` is: core does no parsing, so the file format is a
+choice made above it.
+
+```java
+JsonObject json = FieldCodec.write(layer);
+FieldLayer back = FieldCodec.read(json.toString(), "sun.json");   // equals(layer)
+```
+
+Round-tripping holds by construction rather than by convention. Both directions are
+derived from the same `@JsonField` annotations on the core records, so there is no
+second statement of the format that could drift from the first — and an inequality
+after a write and a read is how a wrong annotation is caught.
+
+The second argument is a name for error messages. Make it a path a pack author would
+recognise; nothing else reads it.
+
+### Loading layers from pack files
+
+`FieldCodec` reads one file. `FieldLoader` is many files from many packs, and what to
+do when one of them is wrong:
+
+```java
+var result = FieldLoader.load(files);   // Map<String, String>: name -> contents
+result.problems().forEach(p -> LOGGER.warn("{}", p));
+FieldLayer sun = result.layer("sun").orElseThrow();
+```
+
+One malformed file is skipped rather than taking every field down with it, and a layer
+a later pack overrode is reported too. As with `loadBindings`, that leniency is only
+defensible if the problems are seen — **a caller that discards the result has turned a
+loud failure into a silent one.** Log `problems()`.
+
+Two files declaring the same `id` is not an error: the later one wins, because that is
+what a load order means. `hasFailures()` distinguishes the two — it is true only when
+something was skipped, not when something was overridden.
+
+`result.layers()` is keyed by id in load order, and unmodifiable. There is no
+`FieldRegistry` behind it: a registry would be a type wrapping a map without adding a
+decision, where `BindingRegistry` earns its place by sorting on priority and matching
+dimensions.
+
+`loadReaders` takes readers instead, for a caller streaming out of a resource manager.
+It reads each one once and does not close it — closing what you did not open is how a
+caller's try-with-resources ends up closing an already-closed stream. It also wants
+every reader open at once, so for an unbounded pack set, read them one at a time and
+use `load`.
+
 ### Diagnostics
 
 The tessellators log what they were asked for and what they produced, through
