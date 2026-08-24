@@ -18,7 +18,8 @@ measurement of it.
 
 Each content file was wrapped into the slot of a `FieldLayer` it belongs to — a
 `field_fills/` file into a primitive's `fill`, a `field_masks/` file into its
-`visibility` — and put through `FieldCodec.read`. The carrier layer was written by
+`visibility` — and put through `FieldCodec.read`, and whatever came back
+was then put through `LayerGeometry.build`. The carrier layer was written by
 `FieldCodec` itself so it could not be the thing at fault. Two early runs reported `0`
 across the board because the carrier *was* at fault; that is why it is built from the
 model now, and why the numbers below were re-taken after each correction.
@@ -57,15 +58,15 @@ already reads content it does not own; this follows it.
 **Of the seven directories measured, two load completely, one loads in part, and four
 load nothing at all.**
 
-| directory | files | read | what stops the rest |
-|---|---:|---:|---|
-| `field_masks` | 25 | **25** | — |
-| `field_shapes` | 64 | **62** | two files that are not shape documents (below) |
-| `field_fills` | 15 | **3** | two distinct causes, six files each |
-| `field_animations` | 26 | 0 | `skipUnless` is not honoured on read |
-| `field_appearances` | 16 | 0 | `"@primary"` palette references |
-| `field_arrangements` | 62 | 0 | the file's keys are not the record's |
-| `field_links` | 9 | 0 | the file's keys are not the record's |
+| directory | files | read | built | what stops the rest |
+|---|---:|---:|---:|---|
+| `field_masks` | 25 | **25** | **25** | — |
+| `field_shapes` | 64 | **62** | **62** | two files that are not shape documents (below) |
+| `field_fills` | 15 | **3** | **3** | two distinct causes, six files each |
+| `field_animations` | 26 | 0 | 0 | `skipUnless` is not honoured on read |
+| `field_appearances` | 16 | 0 | 0 | `"@primary"` palette references |
+| `field_arrangements` | 62 | 0 | 0 | the file's keys are not the record's |
+| `field_links` | 9 | 0 | 0 | the file's keys are not the record's |
 
 Fifteen directories were **not** measured — `field_beams`, `field_force`, `field_orbits`,
 `field_presets`, `field_profiles`, `field_visual`, `field_follows`, `field_predictions`,
@@ -76,6 +77,31 @@ The useful sentence is the first row. `field_masks` reads 25 of 25 with no speci
 handling at all, which means the format and the model do agree where nobody has
 diverged. Every failure below is a specific, nameable divergence rather than a general
 incompatibility.
+
+## Reading is not the hard part any more
+
+**`built` is `read`, in every row.** Every file the codec accepts,
+`LayerGeometry.build` turns into pieces, and not one of them produces only empty meshes.
+The second column was added because the first had stopped being the interesting one:
+`LayerGeometry` existed and was tested, but only against fixtures this repository wrote
+itself, and content it has never seen is the whole question.
+
+That is a real result and it is also a narrow one. Three things it does **not** say:
+
+- **It is not a claim about correctness.** The scan counts what threw and what came back
+  empty. A mesh with the wrong number of vertices in it passes both.
+- **It cannot see a substitution.** Two of the 64 shape files ask for the `TYPE_A` and
+  `TYPE_E` sphere algorithms, and those two do not have a mesh form at all — the
+  tessellator logs `use direct rendering. Falling back to LAT_LON for mesh` and hands
+  back a lat-lon sphere. Non-empty, no exception, different shape. Counting it as built
+  is accurate and misleading at the same time, which is why it is written down here
+  rather than left in a log line nobody reads.
+- **It says nothing about the four directories that read nothing.** Zero files built out
+  of zero files read is not evidence of anything.
+
+The build ran with `RadiusPolicy.IGNORE`, because a measurement must not decide the thing
+it is measuring: any other policy would be this scan inventing how `radiusMatch` resizes
+a shape, which is one of the open questions below.
 
 ## `field_shapes`: 62 of 64, and it was 0 of 64 yesterday
 
