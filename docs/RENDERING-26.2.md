@@ -549,14 +549,37 @@ This repository pins `mc_26_2_fabric_api=0.157.0+26.2`, and the capability arriv
 > directory as `FeatureRendererRegistry.java`, as a separate file. Two meanings of
 > "feature renderer" live side by side.
 
+### A `FeatureRendererType` is made by a static factory
+
+The registration signature names the type; the primer shows one being built:
+
+```java
+public static final FeatureRendererType<ExampleSubmit> TYPE =
+        FeatureRenderer.type("examplemod:example_submit");
+```
+
+A namespaced id, held in a static. Nothing registry-shaped, and nothing loader-specific
+— this is vanilla API, which matters because it means the type and the node can live in
+shared code with only the registration call split per loader.
+
 What is still **not** established:
 
-- **The NeoForge-side registration mechanism.** Only Fabric was read. Do not assume a
-  mirror; the fog and GUI paths each needed their own lookup.
+- **The NeoForge-side registration mechanism.** Only Fabric was read, and NeoForge's is
+  not in the primer — the primer says so itself: *"This does not look at any specific
+  mod loader, just the changes to the vanilla classes."* Do not assume a mirror of
+  Fabric's; the fog and GUI paths each needed their own lookup and each found a
+  differently-shaped answer.
+
+  Paths already tried and 404'd, so the next attempt does not repeat them: the branch is
+  `26.2.x` (confirmed, and the default), but neither
+  `src/main/java/net/neoforged/neoforge/client/event`,
+  `src/main/java/net/neoforged/neoforge/client`, nor
+  `projects/neoforge/src/main/java/net/neoforged/neoforge/client/event` exists under it.
+  The repository root does carry both `src/` and `projects/`. `docs.neoforged.net` is
+  egress-blocked from this environment, as are `fabricmc.net` and `docs.fabricmc.net`.
+
 - **Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`**, which is
   what decides how directly a `Mesh` maps onto it.
-- **The shape of `FeatureRendererType`** — how one is created or declared. The
-  registration signature names it; nothing read here shows it being constructed.
 
 ### What this means for the field renderer
 
