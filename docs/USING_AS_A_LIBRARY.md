@@ -653,6 +653,23 @@ Two files declaring the same `id` is not an error: the later one wins, because t
 what a load order means. `hasFailures()` distinguishes the two — it is true only when
 something was skipped, not when something was overridden.
 
+A third kind is worth knowing about. A `PrimitiveLink` naming a primitive that is not
+there — a typo, a self-reference, a link pointing forwards — resolves to nothing, and
+it does so *silently*: `LinkResolver.resolveRadius` returns `-1` for an unknown target
+exactly as it does for "no link at all", so downstream the two are indistinguishable.
+`FieldLoader` runs `LinkResolver.validate` on every layer it loads and reports each one
+as `Kind.UNRESOLVED_LINK`:
+
+```java
+FieldLoader.load(files).problems().stream()
+        .filter(p -> p.kind() == FieldLoader.Problem.Kind.UNRESOLVED_LINK)
+        .forEach(p -> LOGGER.warn("{}", p));
+```
+
+The layer still loads — one bad link should not cost you the primitives that work — so
+`hasFailures()` stays false. It is still a mistake rather than an intent, which is the
+difference between it and an override, and the reason it is worth logging separately.
+
 `result.layers()` is keyed by id in load order, and unmodifiable. There is no
 `FieldRegistry` behind it: a registry would be a type wrapping a map without adding a
 decision, where `BindingRegistry` earns its place by sorting on priority and matching

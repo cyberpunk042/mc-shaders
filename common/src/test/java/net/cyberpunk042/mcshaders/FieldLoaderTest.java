@@ -253,6 +253,68 @@ class FieldLoaderTest {
     }
 
     @Nested
+    @DisplayName("a link that cannot resolve")
+    class BrokenLinks {
+
+        // LinkResolver.resolveRadius returns -1 for an unknown target exactly as it does
+        // for "no link at all", so downstream the two are indistinguishable and a typo
+        // just quietly does nothing. That is the same shape as the bug the whole radius
+        // story is about, one level up, and the loader is where it can still be named.
+
+        private static String layerWithLink(String id, String target) {
+            return "{\"id\":\"" + id + "\",\"primitives\":["
+                    + "{\"id\":\"anchor\",\"type\":\"sphere\",\"shape\":"
+                    + FieldCodec.write(FieldLayer.of("x", List.of(
+                            SimplePrimitive.of("a", SphereShape.of(1f).getType(),
+                                    SphereShape.of(1f)))))
+                            .getAsJsonArray("primitives").get(0).getAsJsonObject()
+                            .get("shape") + "},"
+                    + "{\"id\":\"follower\",\"type\":\"sphere\",\"shape\":"
+                    + FieldCodec.write(FieldLayer.of("x", List.of(
+                            SimplePrimitive.of("a", SphereShape.of(1f).getType(),
+                                    SphereShape.of(1f)))))
+                            .getAsJsonArray("primitives").get(0).getAsJsonObject()
+                            .get("shape") + ","
+                    + "\"link\":{\"target\":\"" + target + "\",\"radiusMatch\":true}}]}";
+        }
+
+        @Test
+        @DisplayName("a link to something that does not exist is reported")
+        void unknownTargetIsReported() {
+            FieldLoader.Result result = FieldLoader.load(
+                    files("sun.json", layerWithLink("sun", "no_such_primitive")));
+
+            assertFalse(result.isClean(), () -> "problems: " + result.problems());
+            assertEquals(FieldLoader.Problem.Kind.UNRESOLVED_LINK,
+                    result.problems().get(0).kind());
+            assertTrue(result.problems().get(0).message().contains("no_such_primitive"),
+                    () -> "the message has to name the typo: "
+                            + result.problems().get(0).message());
+        }
+
+        @Test
+        @DisplayName("the layer still loads, because one bad link is not a bad file")
+        void theLayerStillLoads() {
+            FieldLoader.Result result = FieldLoader.load(
+                    files("sun.json", layerWithLink("sun", "no_such_primitive")));
+
+            assertTrue(result.layer("sun").isPresent(),
+                    "skipping the layer would lose two working primitives over one typo");
+            assertFalse(result.hasFailures(),
+                    "hasFailures means something did not load; this did");
+        }
+
+        @Test
+        @DisplayName("a link that does resolve is not reported")
+        void goodLinkIsSilent() {
+            FieldLoader.Result result = FieldLoader.load(
+                    files("sun.json", layerWithLink("sun", "anchor")));
+
+            assertTrue(result.isClean(), () -> "problems: " + result.problems());
+        }
+    }
+
+    @Nested
     @DisplayName("two packs, one id")
     class Overrides {
 
