@@ -119,6 +119,57 @@ class JsonFieldContractTest {
         assertTrue(unresolved.isEmpty(), String.join("; ", unresolved));
     }
 
+    /**
+     * Every {@code skipUnless} type can say what "left out" was, without guessing.
+     *
+     * <p>{@code skipUnless} is the one directive that records when a value may be
+     * omitted and not what it was, which is why the codec does not honour it on the
+     * way out. Reading a file a person wrote is the other direction, and needs an
+     * answer for an absent key. This pins the answer the model already has: each such
+     * type carries a {@code NONE}, and the predicate is false on it.
+     *
+     * <p>Nothing consumes that yet - see {@code docs/VIRUS-BLOCK-FIELD-STATE.md} for
+     * the open question about which value an absent key should take. It is pinned now
+     * because the choice depends on it, and a type added later without a {@code NONE}
+     * would remove an option without anyone noticing.
+     */
+    @Test
+    @DisplayName("every skipUnless type has a NONE its predicate calls inactive")
+    void skipUnlessTypesHaveAnInactiveConstant() {
+        List<String> problems = new ArrayList<>();
+        int checked = 0;
+        for (Field f : annotatedFields()) {
+            String predicate = f.getAnnotation(JsonField.class).skipUnless();
+            if (predicate.isEmpty()) {
+                continue;
+            }
+            Class<?> type = f.getType();
+            String where = f.getDeclaringClass().getSimpleName() + "." + f.getName()
+                    + " (" + type.getSimpleName() + ")";
+            try {
+                Field none = type.getDeclaredField("NONE");
+                none.setAccessible(true);
+                Object inactive = none.get(null);
+                if (inactive == null) {
+                    problems.add(where + ": NONE is null");
+                    continue;
+                }
+                if ((Boolean) type.getMethod(predicate).invoke(inactive)) {
+                    problems.add(where + ": NONE." + predicate + "() is true, so it is "
+                            + "not the value an omitted key means");
+                    continue;
+                }
+                checked++;
+            } catch (NoSuchFieldException e) {
+                problems.add(where + ": no NONE constant, so an absent key has no value");
+            } catch (ReflectiveOperationException e) {
+                problems.add(where + ": " + e);
+            }
+        }
+        assertTrue(problems.isEmpty(), String.join("; ", problems));
+        assertTrue(checked > 0, "no skipUnless directives found, so this checked nothing");
+    }
+
     /** {@code skipIfEqualsField} names another field on the same declaring type. */
     @Test
     @DisplayName("every skipIfEqualsField names a sibling field")
