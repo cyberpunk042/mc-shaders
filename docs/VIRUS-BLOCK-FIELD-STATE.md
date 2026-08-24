@@ -23,15 +23,29 @@ Each content file was wrapped into the slot of a `FieldLayer` it belongs to — 
 across the board because the carrier *was* at fault; that is why it is built from the
 model now, and why the numbers below were re-taken after each correction.
 
-There is deliberately no `mcshaders-fields` command yet, because **where it would live
+Reproduce every number on this page with:
+
+```sh
+./gradlew :common:test --tests '*FieldContentScanTest' \
+    -Dmcshaders.fieldContent=../the-virus-block-mc/config/the-virus-block
+```
+
+`FieldContentScanTest` is skipped without that property, which is every CI run, because
+the content is not in this repository. It asserts that it *looked* rather than what it
+found: the counts belong to somebody else's tree and change when they edit it, so
+failing on a number would make it a tripwire on a repository we do not control. It does
+fail on finding nothing, because a wrong path reporting zero everywhere is
+indistinguishable from content that is entirely unreadable — which is how the first runs
+of this scan misled its author.
+
+There is deliberately no `mcshaders-fields` **command**, because **where one would live
 is an open question, not an oversight.** `check/` is an included build precisely so it
 needs no Minecraft toolchain — `settings.gradle.kts` says a shader pack should be
 validatable "in someone else's CI, by someone who has no interest in building this
 mod", and the same argument applies here. But `FieldCodec` lives in `common/`, which is
 a subproject of the root build, and an included build cannot depend on a subproject.
-Resolving that means either moving the field codec, making `common` an included build,
-or accepting that this check only runs inside the full build. That is a decision, so
-the harness stayed a scratch one.
+Resolving that means either moving the field codec or making `common` an included
+build. A test needs none of that decided, which is why the reproduction above is one.
 
 Nothing from that repository is vendored here, and nothing should be: `PORTING.md` is
 explicit that the configs are CC content while this repository is MIT, and that
@@ -75,7 +89,11 @@ The two that still do not read are content, not codec:
 - **`smooth_sphere.json`** carries no `type`. It is `{radius, latSteps, lonSteps,
   algorithm}` — a *fragment* meant to be applied to an already-chosen shape, which is
   the use case `@JsonField`'s `aliases` documents. It is not a standalone shape
-  document and should not be read as one.
+  document and should not be read as one. Read against a sphere anyway, it fails a
+  second time on `"algorithm": "ICOSPHERE"`, which is not one of the five names core
+  accepts — `ICO_SPHERE` is, and matching is case-insensitive, but the underscore is
+  not optional. That is a content-side value core never had, and it is the only one in
+  the tree.
 - **`wide_disc.json`** names `"disc"`. **The source mod's own `ShapeTypeAdapter` does
   not handle that either** — its switch has eight cases (`sphere`, `ring`, `prism`,
   `cylinder`, `polyhedron`, `jet`, `rays`, `molecule`) and `disc` is not among them.
