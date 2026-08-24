@@ -549,6 +549,52 @@ This repository pins `mc_26_2_fabric_api=0.157.0+26.2`, and the capability arriv
 > directory as `FeatureRendererRegistry.java`, as a separate file. Two meanings of
 > "feature renderer" live side by side.
 
+### What a `SubmitNode` actually looks like
+
+The primer's own example, quoted:
+
+```java
+public record ExampleSubmit(Matrix4fc pose, RenderType type, ...)
+    implements TranslucentSubmit, BatchableSubmit {
+    @Override
+    public FeatureRendererType<? extends TranslucentSubmit> featureType() {
+        // The identifier for our feature renderer.
+    }
+
+    @Override
+    public Object batchKey() {
+        // The batch key should be an object that allows the renderer or
+        // phase to hold its state for as long as possible before switching.
+        return this.type;
+    }
+
+    @Override
+    public float distanceToCameraSq() {
+        // Compute the camera distance.
+        return TranslucentSubmit.computeDistanceToCameraSq(this.pose);
+    }
+}
+```
+
+Three things worth noticing. It is **a record**, so it is the same kind of object this
+project already passes around. It carries a `Matrix4fc pose` and a `RenderType` — and
+`LayerGeometry.Piece` already carries a `Transform` and an `Appearance`, so the mapping
+is a conversion rather than a redesign; the mesh goes where the `...` is. And
+`distanceToCameraSq` has a supplied implementation,
+`TranslucentSubmit.computeDistanceToCameraSq(pose)`, so ordering is not ours to get
+right.
+
+### The phase is usually not yours to write
+
+> *"If you are making use of `SubmitNode` or `TranslucentSubmit` with no additional
+> sorting behavior, then you can instead make use of `SimpleFeatureRenderPhase` and
+> `TranslucentFeatureRenderPhase`, respectively."*
+
+That removes one of the three pieces for the common case. A field layer wants
+translucency and has no ordering requirement beyond camera distance, which is exactly
+what `TranslucentFeatureRenderPhase` covers. Assume the phase is built-in until
+something specific forces otherwise.
+
 ### A `FeatureRendererType` is made by a static factory
 
 The registration signature names the type; the primer shows one being built:
