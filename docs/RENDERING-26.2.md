@@ -112,6 +112,16 @@ in that JSON, `TargetSpec` is where it goes.
 Full-screen post-processing passes do not need any of it. Worth knowing before
 someone reaches for the familiar idiom.
 
+> **Corrected 2026-08-24, and the correction matters.** The paraphrase above ends
+> at the removal and reads as though nothing replaced it. The primer's own sentence
+> does not: *"The feature rendering system has been overhauled to **completely
+> replace** `MultiBufferSource` and any direct vertex uploads outside of vanilla
+> chunk rendering."* There is a replacement, it is named, and a mod can draw
+> arbitrary geometry through it. See
+> [What replaced immediate mode](#what-replaced-immediate-mode-the-feature-rendering-system)
+> below. Read as written, this section would have retired the field renderer before
+> it was attempted.
+
 ## The post-effect chain hook points, which are still not established
 
 > Renamed from "The Fabric hook points" once the fog hook below turned out to be
@@ -434,6 +444,103 @@ that a wrong signature here costs a CI round-trip apiece, and reading cost none.
 
 The same table is therefore safe to build on. The list of what did *not* change is
 proven by the same run.
+
+## What replaced immediate mode: the feature rendering system
+
+**Source.** The same NeoForged 26.2 primer, read again for this specifically, plus a
+web search that surfaced the Fabric API version. Quotes below are the primer's words.
+Where something is *not* on the page, this says so rather than filling the gap.
+
+This is what a field renderer has to be built on, because `LayerGeometry` produces
+`Mesh` — vertices and indices — and the old idiom for getting those onto the screen is
+the one that was removed.
+
+### The three things a custom feature needs
+
+> *"three things a required: a `SubmitNode` to represent the data of the submitted
+> feature, the `FeatureRenderPhase`(s) to store the `SubmitNode`s and supply them to
+> the correct renderer, and the `FeatureRenderer` responsible for rendering the
+> submissions."*
+
+`SubmitNode` is *"a node for some submitted element that holds a record of the
+submitted data that is used by the specified `FeatureRenderer`."* Two interfaces it
+can carry are named: `TranslucentSubmit`, which supplies `distanceToCameraSq()` for
+ordering, and `BatchableSubmit`, which supplies `batchKey()` for grouping. The primer
+shows a custom `ExampleSubmit` implementing both — **which is the load-bearing fact
+here: mods define their own submit types.**
+
+`FeatureRenderPhase` is *"responsible for collecting these submissions and supplying
+them to an `$Output` for rendering"* and defines three methods: `submit` — *"what the
+`OrderedSubmitNodeCollector#submit*` methods delegate to"* — `isEmpty`, and `sortInto`
+*"for passing the submissions to their appropriate group via `$Output#accept`."*
+
+### The renderer's lifecycle
+
+> *"The rendering process is broken into two sections: preparation and execution."*
+
+| Phase | Methods | What happens |
+|---|---|---|
+| Preparation | `beginPrepare` → `prepareGroup` → `finishPrepare` | *"turning the submitted elements into an intermediate state, usually buffer data stored in the `StagedVertexBuffer`"* |
+| Execution | `executeGroup` → `finishExecute` | `executeGroup` is *"for using a `RenderPass` to draw the target color and depth texture"*; `finishExecute` *"for cleaning up the renderer for the next render frame"* |
+
+`StagedVertexBuffer` is where a mod's own vertices go. One constraint is called out
+explicitly: *"the only thing that should be stored during `prepareGroup` is the draw
+reference (for `StagedVertexBuffer` this is `StagedVertexBuffer$Draw`)."*
+
+Related, and in this project's favour: `VertexFormat` and `VertexFormatElement` were
+*"partially rewritten into a more dynamic framework"*, with elements *"constructed when
+building the `VertexFormat` by adding attributes via `$Builder#addAttribute`."* A mesh
+whose vertex layout is decided by content rather than by a fixed enum has somewhere to
+go.
+
+The dispatcher is reached at
+`Minecraft.getInstance().gameRenderer.featureRenderDispatcher()`, and
+`FeatureRenderDispatcher` *"now takes in a `SubmitNodeStorage` as part of its render
+methods."*
+
+### Registration is loader-specific, and this is the open end
+
+The primer does not give a mod-facing registration API. It says only: *"Assume we can
+inject into the end of the `FeatureRendererDispatcher` constructor and that
+`featureRenderers` is accessible."* That is an assumption for the sake of its example,
+not an entry point.
+
+**Fabric has one.** A search of the 26.2 modding material reports that *"Fabric API
+0.153.0+26.2 added an API for registering custom `FeatureRenderer`s."* This repository
+pins `mc_26_2_fabric_api=0.157.0+26.2`, so the capability is present at the version
+already in [gradle.properties](../gradle.properties) — **no version bump is needed to
+start.**
+
+What is **not** established, and must be read from source before anything is typed:
+
+- The exact Fabric class and method that registers a `FeatureRenderer`. `fabricmc.net`
+  and `docs.fabricmc.net` are both unreachable from this environment (egress-blocked),
+  so this has to come from the `FabricMC/fabric-api` sources or from a mod that uses
+  them. **A search for it surfaced `LivingEntityFeatureRendererRegistrationCallback`,
+  which is a 1.20-era API for entity feature renderers and a different thing entirely.
+  It is named here so nobody pattern-matches onto it.**
+- The NeoForge-side registration mechanism.
+- Whether `StagedVertexBuffer` accepts a caller-supplied `VertexFormat`, which is what
+  decides how directly a `Mesh` maps onto it.
+
+### What this means for the field renderer
+
+The path exists and is buildable. It is also a different shape from the old idiom: not
+"get a `VertexConsumer`, push vertices, done", but a submit node, a phase, and a
+renderer with a five-method lifecycle, registered per loader.
+
+Two consequences worth stating before anyone starts:
+
+1. **The work is loader-split in a way the fog and GUI paths were not.** Those found
+   Fabric/NeoForge equivalents that let `vanilla/` hold one implementation. Registration
+   here has no such pairing established yet, so assume a per-loader entry point calling
+   into shared code until proven otherwise.
+2. **Screen-space is a real alternative, not a fallback.** `the-virus-block-mc`'s own
+   `field_visual_*` effects are post-processing chains, not tessellated geometry, and
+   this repository's chain and shader infrastructure already targets that path. Whether
+   fields should be drawn as geometry at all, or raymarched as an effect, is a design
+   question this document does not answer — but it is now clear that both are open,
+   and only one of them requires the system described above.
 
 ## Cross-references
 
