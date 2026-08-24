@@ -51,6 +51,20 @@ tasks.test {
         rootProject.file("check/build.gradle.kts"),
     ).withPropertyName("documentsUnderTest")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // FieldContentScanTest reads a content tree that is deliberately not in this
+    // repository, named by this property. Gradle hands `-D` to the build JVM and not
+    // to the test JVM, so without this the documented command would run the scan
+    // against nothing and report a pass by skipping it — the same silent-zero the
+    // test's own assertion exists to prevent, one level up.
+    //
+    // Declared as an input as well as forwarded, so pointing it somewhere new re-runs
+    // the task instead of reporting the previous tree's result as UP-TO-DATE.
+    val fieldContent = providers.systemProperty("mcshaders.fieldContent")
+    inputs.property("fieldContent", fieldContent).optional(true)
+    if (fieldContent.isPresent) {
+        systemProperty("mcshaders.fieldContent", fieldContent.get())
+    }
 }
 
 java {
