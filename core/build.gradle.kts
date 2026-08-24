@@ -63,6 +63,17 @@ tasks.test {
     inputs.file(rootDir.parentFile.resolve("docs/USING_AS_A_LIBRARY.md"))
         .withPropertyName("libraryGuide")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // ShapeRecipeDocTest.Page does the same for the shapes page, and additionally reads
+    // its own source to take the example from the markers rather than from a snippet
+    // list. Both files therefore have to be inputs, or the check that the two agree
+    // goes up-to-date across an edit to either of them.
+    inputs.file(rootDir.parentFile.resolve("docs/SHAPES.md"))
+        .withPropertyName("shapesPage")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
+    inputs.files(fileTree("src/test/java"))
+        .withPropertyName("testSourcesAsText")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Javadoc is published because this is a library other people read against.

@@ -17,18 +17,38 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * Compiles and exercises the example printed in README.md.
+ * Compiles and exercises a core-level pipeline example: a stack, a binding, a frame.
  *
- * <p>Documentation that does not compile is worse than none, and an API example is
- * exactly the thing that rots first. This test fails the build if the README drifts
- * from the real surface — if you change it here, change it there.
+ * <p><strong>It does not guard README.md, and its previous claim to was false.</strong>
+ * The wording said this "fails the build if the README drifts from the real surface".
+ * It cannot: nothing here opens the page. The drift it was written to catch has since
+ * happened unnoticed — README's one Java block now shows four
+ * {@code McShadersAPI.register*} calls, and not one line of the example below appears
+ * in it, or in any other page.
+ *
+ * <p>Core cannot fix that by pointing at the README instead, which is the useful part
+ * of the finding rather than an excuse: {@code McShadersAPI} lives in {@code common},
+ * so the surface the README actually advertises is not reachable from this module. A
+ * test that guards the README's Java block has to live in {@code common} — and
+ * {@code common}'s own {@code ReadmeExampleTest} already reads the page, for the
+ * binding JSON rather than the Java.
+ *
+ * <p>What remains here is worth keeping on its own terms — it is the one place the
+ * stack, the registry and the pipeline are driven end to end in core — so it is
+ * described honestly rather than deleted or renamed. Two ways to make the old name
+ * true again, both the operator's call: put this example back on the README, or move
+ * the front-page guarantee to {@code common} where the advertised calls live. Neither
+ * is a correction, so neither is taken here.
+ *
+ * @see net.cyberpunk042.mcshaders.core.LayerGeometryTest.Guide for the pattern a real
+ *      doc-drift check follows in this module
  */
 class ReadmeExampleTest {
 
     @Test
-    @DisplayName("the README example compiles and produces a renderable graph")
+    @DisplayName("the stack, the binding and the pipeline drive one frame end to end")
     void readmeExampleWorks() {
-        // ── begin README example ──────────────────────────────────────────────
+        // ── begin core pipeline example ───────────────────────────────────────
         EffectStack netherHeat = EffectStack.of(
                 EffectLayer.of("heat_haze", EffectKind.DISTORT,
                         EffectParams.builder().scalar("amplitude", 0.02).build()),
@@ -37,7 +57,7 @@ class ReadmeExampleTest {
 
         BindingRegistry registry = BindingRegistry.of(
                 DimensionBinding.of("nether_base", DimensionId.minecraft("the_nether"), netherHeat));
-        // ── end README example ────────────────────────────────────────────────
+        // ── end core pipeline example ─────────────────────────────────────────
 
         RecordingBackend backend = RecordingBackend.capable();
         ShaderPipeline pipeline = new ShaderPipeline(backend, registry);
@@ -53,8 +73,14 @@ class ReadmeExampleTest {
         assertEquals(1, backend.frameCount(), "the backend should have been driven once");
     }
 
+    /**
+     * The README's capability table lists "layers, params, conditions, priority merge,
+     * easing" as <em>Tested</em>. It does not spell the semantics out, so this is the
+     * evidence for that one word rather than a transcription of prose — which is why it
+     * survives the correction above unchanged.
+     */
     @Test
-    @DisplayName("the per-layer merge described in the README behaves as documented")
+    @DisplayName("priority merge: the override wins its layer and the others survive")
     void perLayerMergeMatchesTheDocumentedBehaviour() {
         EffectStack base = EffectStack.of(
                 EffectLayer.of("heat_haze", EffectKind.DISTORT, EffectParams.empty()),

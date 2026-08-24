@@ -72,6 +72,9 @@ Fifteen directories were **not** measured — `field_beams`, `field_force`, `fie
 `field_presets`, `field_profiles`, `field_visual`, `field_follows`, `field_predictions`,
 `field_shockwave`, `dimension_profiles`, `effect_palettes` and the four that hold only a
 README. Most have no single core record to map onto, which is itself worth knowing.
+One of them since has been: `field_visual` is measured against the uniform block its
+shaders read in [VIRUS-BLOCK-FIELD-VISUAL-STATE.md](VIRUS-BLOCK-FIELD-VISUAL-STATE.md),
+which is the other half of the geometry-versus-post-processing evidence.
 
 The useful sentence is the first row. `field_masks` reads 25 of 25 with no special
 handling at all, which means the format and the model do agree where nobody has

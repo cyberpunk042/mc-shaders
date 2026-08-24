@@ -46,6 +46,11 @@ four chains go. Nothing can tell you which from the outside.
 Every `field_visual_*` chain binds a block called `FieldVisualConfig`, and they all
 disagree with the shader in the same two places:
 
+> For how the thirteen *authored* `field_visual` configs line up with that same block —
+> a different layer from the drift below — see
+> [VIRUS-BLOCK-FIELD-VISUAL-STATE.md](VIRUS-BLOCK-FIELD-VISUAL-STATE.md).
+
+
 | byte | the shader reads | the host writes |
 |---|---|---|
 | 264 | `GeoWaveResolution` | `GeoSmoothRadius` |

@@ -1,6 +1,7 @@
 package net.cyberpunk042.mcshaders.core;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
@@ -45,6 +46,12 @@ import net.cyberpunk042.mcshaders.core.param.ParamValue;
 import net.cyberpunk042.mcshaders.core.schema.EffectSchema;
 import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
 import net.cyberpunk042.mcshaders.core.schema.SchemaAudit;
+import java.io.IOException;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.LinkedHashSet;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
@@ -399,5 +406,103 @@ class LibraryDocExampleTest {
         assertTrue(Tessellator.tessellate(fine, 0).vertexCount()
                         > Tessellator.tessellate(coarse, 0).vertexCount(),
                 "raising the shape's own segment count did not produce a finer mesh");
+    }
+
+    /**
+     * The section markers above, against the guide's actual headings.
+     *
+     * <p>{@code LayerGeometryTest.Guide} names this class as the gap on the core side:
+     * it runs its copies of the guide's examples and never opens the page. This closes
+     * the half of that which the markers can carry, and no more.
+     *
+     * <p><strong>It checks the map, not the code.</strong> Each {@code // ── docs: X ──}
+     * marker claims a section of {@code USING_AS_A_LIBRARY.md} by name, and those
+     * markers delimit regions containing tests and assertions rather than a verbatim
+     * block, so there is no transcription here to compare line for line the way
+     * {@code ShapeRecipeDocTest.Page} does. What is checkable is that every heading
+     * named still exists: rename one in the guide and the section pointing at it is
+     * orphaned, silently, with the build green.
+     *
+     * <p>Saying which half is checked matters more than the check. A reader who thinks
+     * these examples are verified against the page is worse off than one who knows they
+     * are not.
+     */
+    @Nested
+    @DisplayName("the guide")
+    class Guide {
+
+        private static final String GUIDE = "docs/USING_AS_A_LIBRARY.md";
+        private static final String SOURCE =
+                "core/src/test/java/net/cyberpunk042/mcshaders/core/LibraryDocExampleTest.java";
+
+        @Test
+        @DisplayName("every section marker names a heading the guide still has")
+        void everyMarkerNamesARealHeading() {
+            Path root = repoRoot();
+            Set<String> claimed = markers(read(root.resolve(SOURCE)));
+            Set<String> headings = headings(read(root.resolve(GUIDE)));
+
+            // Without this the check passes by finding nothing to check: drop the
+            // markers and an empty set satisfies every assertion below.
+            assertFalse(claimed.isEmpty(),
+                    "no 'docs:' markers found in this file, so this verifies nothing");
+            assertFalse(headings.isEmpty(), "no headings parsed out of " + GUIDE);
+
+            for (String section : claimed) {
+                assertTrue(headings.contains(section),
+                        () -> GUIDE + " has no heading '" + section + "'. The section "
+                                + "marked with it is now pointing at nothing — rename the "
+                                + "marker, or put the heading back.");
+            }
+        }
+
+        /** Every {@code // ── docs: X ──} marker in the file, by section name. */
+        private static Set<String> markers(String source) {
+            Set<String> found = new LinkedHashSet<>();
+            for (String line : source.split("\n", -1)) {
+                // Must be a marker line, not any line mentioning one: the javadoc above
+                // quotes the marker form, and a looser match reads its own prose as a
+                // section. That is what the first run of this did.
+                if (!line.strip().startsWith("// ──")) {
+                    continue;
+                }
+                int at = line.indexOf("docs: ");
+                if (at >= 0) {
+                    found.add(line.substring(at + "docs: ".length())
+                            .replace('\u2500', ' ').strip());
+                }
+            }
+            return found;
+        }
+
+        /** The guide's headings, at any level, without their hashes. */
+        private static Set<String> headings(String guide) {
+            Set<String> found = new LinkedHashSet<>();
+            for (String line : guide.split("\n", -1)) {
+                String trimmed = line.strip();
+                if (trimmed.startsWith("#")) {
+                    found.add(trimmed.replaceFirst("^#+\\s*", "").strip());
+                }
+            }
+            return found;
+        }
+
+        private static String read(Path file) {
+            try {
+                return Files.readString(file);
+            } catch (IOException e) {
+                throw new UncheckedIOException(e);
+            }
+        }
+
+        private static Path repoRoot() {
+            for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
+                if (Files.isRegularFile(dir.resolve("LICENSE"))
+                        && Files.isRegularFile(dir.resolve(GUIDE))) {
+                    return dir;
+                }
+            }
+            throw new AssertionError("could not find the repository root");
+        }
     }
 }
