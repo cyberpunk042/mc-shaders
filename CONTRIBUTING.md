@@ -51,10 +51,20 @@ worse than none, because it reads as coverage. Several defects in this repositor
 found exactly this way, and at least one test was found to be asserting nothing — it
 passed while the thing it named was deleted.
 
-**Documentation that runs.** Examples in the docs are executed by tests
-(`ReadmeExampleTest`, `BindingFormatDocTest`, `LibraryApiDocExampleTest`). If you add
-an example, add it to the document and let the test parse it from there rather than
-keeping a copy in the test — a copy passes forever while the page it came from drifts.
+**Documentation that runs.** These tests read a page out of the repository and check
+what it says: `BindingFormatDocTest`, `ReadmeExampleTest`, `LibraryDocExampleTest`,
+`ShapeRecipeDocTest`, `FieldGuideExampleTest`, `LibraryGuideCoordinatesTest`,
+`VersionMatrixDocTest`. If you add an example, add it to the document and let the test
+parse it from there rather than keeping a copy in the test — a copy passes forever while
+the page it came from drifts.
+
+Two tests hold a copy instead, and are worth knowing about as the weaker form rather
+than the pattern to follow. `LibraryApiDocExampleTest` runs the library guide's
+`McShadersAPI` examples and is not pinned to the guide; its own javadoc has a section
+on why neither pinning mechanism here fits it. `ReadmeExampleTest` in `core` is the same
+shape — what guards the README's front-page Java example is still open. This paragraph
+used to name `LibraryApiDocExampleTest` as an example of pinning, which is the drift
+`ContributingGuideTest` now prevents.
 
 **Honesty about what is unproven.** Much of this project compiles against the real 26.2
 API and has never been observed running. That is stated plainly in the README and
