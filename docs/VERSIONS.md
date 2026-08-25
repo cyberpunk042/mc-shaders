@@ -25,7 +25,7 @@ suspecting the build logic.
 | Version | Status | Released | Notes |
 |---|---|---|---|
 | `26.2` | Current stable | 2026-06-16 | "Chaos Cubed". Sulfur caves; **experimental Vulkan renderer**; friends list. Our primary target. |
-| `26.3` | Upcoming | Q3 2026 | In snapshots (snapshot 7 as of 2026-08). Declared in `gradle.properties` but **not** in `active_versions`. |
+| `26.3` | Upcoming | Q3 2026 | In snapshots (snapshot 7 as of 2026-08). Its keys exist in `gradle.properties` and are placeholders; `mc_version` still selects 26.2. |
 | `26.1` | Superseded | 2026-03 | The version that broke modding wide open — see below. |
 
 ### What 26.1 changed, and why it matters here
@@ -81,7 +81,8 @@ graphics API. See [ARCHITECTURE.md](ARCHITECTURE.md).
 | Fabric Loom plugin id | `net.fabricmc.fabric-loom` | **Verified in CI** | The legacy `fabric-loom` id resolved, then failed with "Failed to find official mojang mappings for 26.2". See below. |
 | `mc_26_2_neoforge` | `26.2.0.35-beta` | **Verified in CI** | Started as the least confident value in the table, derived from the documented `26.2.0.x` prefix scheme; it resolved and built. Newer builds exist (the Maven listing shows at least `26.2.0.62`), so this is a deliberate pin, not the latest. |
 | `mc_26_2_neoform` | `26.2-2` | **Pending CI** | Read out of NeoForge 26.2.x's own build, which consumes `net.neoforged:neoform:${minecraft_version}-${neoform_version}` with `minecraft_version=26.2` and `neoform_version=2`. Gives the `vanilla` module Minecraft with no loader attached, via ModDevGradle's NeoForm mode. |
-| `mc_26_3_*` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
+| `mc_26_3_fabric_api`, `mc_26_3_neoforge`, `mc_26_3_neoform`, `mc_26_3_fabric_loader` | `PIN_ON_RELEASE` | Placeholder | Intentionally invalid so a premature enable fails loudly rather than silently building the wrong thing. |
+| `mc_26_3_minecraft` | `26.3` | Known | A name, not a pin: that is what the version is called. The row above is what has to be filled in. |
 
 ## Cross-checked against a shipping 26.2 mod
 
@@ -94,7 +95,7 @@ targets 26.2 on Fabric, and its `gradle.properties` reads:
 | `loader_version` | `0.19.3` | `0.19.3` | independent confirmation of the bump below |
 | `minecraft_version` | `26.2` | `26.2` | — |
 | `fabric_api_version` | `0.152.1+26.2` | `0.157.0+26.2` | ours is newer and resolves in CI; theirs is simply older |
-| `loom_version` | `1.16-SNAPSHOT` | `1.17` | see below |
+| `loom_version` | `1.16-SNAPSHOT` | `1.16.3` | see below — `1.17` was tried first and rejected |
 | Loom plugin id | `net.fabricmc.fabric-loom` | same | confirms the new plugin id, not the legacy one |
 
 **On Loom, the two sources disagreed, and the mod was right.** Fabric's 26.2
