@@ -166,7 +166,31 @@ range was stated, so `v2CoronaBrightness` — comment default `0.15`, three pres
 
 Where each bound comes from: **4** the block's comments, **31** the observed spread
 across presets, **40** placeholders spanning `[0, 2v]` where every preset agrees on one
-value and there is therefore no evidence of a limit at all.
+value and there is therefore no evidence of a limit at all. On top of that, every bound
+admits the values the comment *enumerates* — which matters for exactly one parameter and
+would have been invisible otherwise. `geoDomeClip` documents `0=sphere, 0.5=hemisphere,
+1=flat`, and no preset sets it above `0.5`; deriving its bound from content alone put
+"flat" out of reach of an editor entirely. A feature quietly missing rather than a value
+visibly wrong.
+
+### Driven through the editing stack
+
+These are the first realistic schemas here — `mcshaders:fog` describes three parameters,
+`ENERGY_ORB` describes 62 — so `FieldVisualEditingTest` runs them through `EditSession`
+and `TuningStore` rather than checking the numbers in isolation. That matters because
+`ParamSpec.coerce` **clamps** a bounded scalar and `EditSession.set` runs every value
+through it: a bound that is too narrow raises nothing, it rewrites the value on the way
+in. Restoring the documented `0-1` on `coreSize` makes the test report
+`expected <10.0> but was <1.0>` — the silent rewrite, made loud.
+
+Two measurements from that pass, neither a defect:
+
+- A full sweep of all 62 parameters produces **53** effective edits, because eleven specs
+  already sit at the top of their own bounds, so nudging them up changes nothing.
+- Those 53 consume 53 of `EditSession`'s **64** default history slots. A second sweep
+  would start dropping the oldest states. `resetAll()` is unaffected — it applies the
+  original directly — so "back to start" always works; it is step-by-step undo that runs
+  out. The default was presumably chosen when the largest schema had three parameters.
 
 **Labels are mechanical on purpose.** The block describes 149 of its members and those
 would read better than `"Core Size"`. That mod is CC BY-ND-NC — *NoDerivatives* — so the

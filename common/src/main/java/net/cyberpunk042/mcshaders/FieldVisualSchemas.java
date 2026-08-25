@@ -31,7 +31,13 @@ import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
  * four modes and a preset uses a fifth value, which is why it is a slider here rather
  * than a choice.
  *
- * <p>So every bound widens to admit every value the presets actually use. Getting that
+ * <p>So every bound widens to admit every value there is evidence for: the stated
+ * range, the values the comment <em>enumerates</em>, everything the presets use, and the
+ * fallback itself. The enumerated ones matter more than they look — {@code geoDomeClip}
+ * documents {@code 0=sphere, 0.5=hemisphere, 1=flat} while no preset ever sets it above
+ * {@code 0.5}, so deriving its bound from content alone put "flat" out of reach of an
+ * editor entirely. It is the only parameter that rule changes, and it would have been a
+ * feature quietly missing rather than a value visibly wrong. Getting that
  * rule half-right is the one bug this file has had: an earlier draft applied the
  * widening only where a range was stated, and {@code v2CoronaBrightness} — whose comment
  * gives a default of {@code 0.15} while three presets set it to {@code 1.0} — came out
@@ -189,7 +195,7 @@ public final class FieldVisualSchemas {
                 .group("Geodesic Animation",
                         ParamSpec.slider("geoAnimMode", "Geo Anim Mode", 0, 1, 1, "Geodesic Animation"),
                         ParamSpec.slider("geoRotationSpeed", "Geo Rotation Speed", 0, 0.4, 0.2, "Geodesic Animation"),
-                        ParamSpec.slider("geoDomeClip", "Geo Dome Clip", 0, 0.5, 0.5, "Geodesic Animation"))
+                        ParamSpec.slider("geoDomeClip", "Geo Dome Clip", 0, 1, 0.5, "Geodesic Animation"))
                 .build();
     }
 }
