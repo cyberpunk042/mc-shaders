@@ -8,6 +8,7 @@ import net.cyberpunk042.mcshaders.core.param.ParamValue;
 import net.cyberpunk042.mcshaders.core.schema.Bounds;
 import net.cyberpunk042.mcshaders.core.schema.ControlKind;
 import net.cyberpunk042.mcshaders.core.schema.ParamSpec;
+import net.cyberpunk042.mcshaders.core.schema.SchemaLayout;
 import net.cyberpunk042.mcshaders.core.schema.SliderScale;
 import net.minecraft.client.gui.components.AbstractSliderButton;
 import net.minecraft.client.gui.components.Button;
@@ -52,6 +53,13 @@ import net.minecraft.network.chat.Component;
  *
  * <h2>What is deliberately unfinished</h2>
  *
+ * <p>The list does not scroll. Every row is placed and every widget is added, so a
+ * schema taller than the window has controls laid out below it that nothing can
+ * reach — and the footer is drawn across whichever row it lands on. {@link
+ * SchemaLayout} measures this and {@code FieldVisualLayoutTest} pins the numbers;
+ * what to do about it — scroll, paginate, collapse groups — is a design decision and
+ * not made here.
+ *
  * <p>{@link ControlKind#COLOR} and {@link ControlKind#VECTOR} show their value and are
  * not editable. A colour wants a picker and a vector wants three linked sliders;
  * neither exists in vanilla, and inventing one against an API that cannot be run here
@@ -60,11 +68,20 @@ import net.minecraft.network.chat.Component;
  */
 public final class SchemaScreen extends Screen {
 
-    private static final int ROW_HEIGHT = 24;
+    /**
+     * Row heights, margins and how deep the footer sits.
+     *
+     * <p>In {@code core} rather than here, for the reason this class already gives
+     * about {@link SliderScale}: a screen cannot be run in a test, and a list that
+     * runs off the bottom of the window is a wrong number rather than a crash. See
+     * {@code FieldVisualLayoutTest} — the energy-orb schema is 81 rows and wants a
+     * 2000-pixel window, so at ordinary sizes most of it is laid out below the
+     * footer.
+     */
+    private static final SchemaLayout LAYOUT = SchemaLayout.DEFAULT;
+
     private static final int CONTROL_WIDTH = 200;
     private static final int LABEL_WIDTH = 140;
-    private static final int TOP_MARGIN = 32;
-    private static final int WIDGET_HEIGHT = 20;
     private static final int FOOTER_BUTTON_WIDTH = 70;
     private static final int FOOTER_GAP = 4;
 
@@ -103,16 +120,15 @@ public final class SchemaScreen extends Screen {
         super.init();
 
         int left = (width - LABEL_WIDTH - CONTROL_WIDTH) / 2;
-        int y = TOP_MARGIN;
+        int row = 0;
 
         for (String groupName : session.schema().groupNames()) {
-            addLabel(Component.literal(groupName), left, y);
-            y += ROW_HEIGHT;
+            addLabel(Component.literal(groupName), left, LAYOUT.rowY(row++));
 
             for (ParamSpec spec : session.schema().group(groupName)) {
+                int y = LAYOUT.rowY(row++);
                 addLabel(Component.literal(spec.label()), left, y);
                 addControl(spec, left + LABEL_WIDTH, y);
-                y += ROW_HEIGHT;
             }
         }
 
@@ -153,7 +169,7 @@ public final class SchemaScreen extends Screen {
             session.set(spec.key(), new ParamValue.Flag(next));
             publish();
             button.setMessage(Component.literal(onOff(next)));
-        }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
+        }).bounds(x, y, CONTROL_WIDTH, LAYOUT.widgetHeight()).build();
     }
 
     /** A button that advances through a spec's choices and relabels itself. */
@@ -170,11 +186,11 @@ public final class SchemaScreen extends Screen {
             session.set(spec.key(), new ParamValue.Text(value));
             publish();
             button.setMessage(Component.literal(value));
-        }).bounds(x, y, CONTROL_WIDTH, WIDGET_HEIGHT).build();
+        }).bounds(x, y, CONTROL_WIDTH, LAYOUT.widgetHeight()).build();
     }
 
     private void addFooter() {
-        int footerY = height - 28;
+        int footerY = height - LAYOUT.footerHeight();
         int total = FOOTER_BUTTON_WIDTH * 4 + FOOTER_GAP * 3;
         int x = (width - total) / 2;
 
@@ -182,7 +198,7 @@ public final class SchemaScreen extends Screen {
         x = addFooterButton("Redo", x, footerY, session::redo);
         x = addFooterButton("Reset", x, footerY, session::resetAll);
         addRenderableWidget(Button.builder(Component.literal("Done"), button -> onClose())
-                .bounds(x, footerY, FOOTER_BUTTON_WIDTH, WIDGET_HEIGHT).build());
+                .bounds(x, footerY, FOOTER_BUTTON_WIDTH, LAYOUT.widgetHeight()).build());
     }
 
     /**
@@ -200,7 +216,7 @@ public final class SchemaScreen extends Screen {
             change.run();
             publish();
             rebuildWidgets();
-        }).bounds(x, y, FOOTER_BUTTON_WIDTH, WIDGET_HEIGHT).build());
+        }).bounds(x, y, FOOTER_BUTTON_WIDTH, LAYOUT.widgetHeight()).build());
         return x + FOOTER_BUTTON_WIDTH + FOOTER_GAP;
     }
 
@@ -238,7 +254,7 @@ public final class SchemaScreen extends Screen {
         private final ParamSpec spec;
 
         private ParamSlider(int x, int y, ParamSpec spec) {
-            super(x, y, CONTROL_WIDTH, WIDGET_HEIGHT, Component.empty(),
+            super(x, y, CONTROL_WIDTH, LAYOUT.widgetHeight(), Component.empty(),
                     SliderScale.toPosition(spec.bounds(), heldValue(spec)));
             this.spec = spec;
             updateMessage();
