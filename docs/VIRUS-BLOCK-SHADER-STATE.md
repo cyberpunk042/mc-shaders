@@ -18,6 +18,24 @@ checker had three defects of its own that this exercise found, so its output is 
 taken on faith. See the commit *"Make the layout check model std140, after running it on
 real shaders"* for what those were.
 
+**Re-verified 2026-08-25 against the same tree: unchanged.** Every claim on this page
+still reconciles, down to which chains carry which finding. What that pass did change is
+how the next one goes: the checker now ends with a totals line, so a re-run is one line
+to compare rather than 347 to read.
+
+```
+21 chain(s): 2 sound, 19 with errors
+290 finding(s) above: 51 error, 9 warning, 230 info
+```
+
+Plus `27 shader file(s) no chain reaches` and `GLSL compiled clean`. Those five numbers
+are this page's fingerprint: if a re-run prints them, nothing below has moved.
+
+**The two sound chains are `virus_block` and `shockwave_glow`** — the first reports
+nothing at all, the second only the warning described below. The headline says 19 have
+errors; these are the other two, and it is worth knowing that the effect the mod is
+named after is the one thing in the tree with nothing wrong with it.
+
 For what each chain *is* — the sun by version, `magic_circle`, the shockwaves — see
 [EFFECTS.md](EFFECTS.md). This page is the state; that one is the catalogue.
 

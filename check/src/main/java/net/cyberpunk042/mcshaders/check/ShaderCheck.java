@@ -5,8 +5,11 @@ import java.io.Reader;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
+import java.util.EnumMap;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import net.cyberpunk042.mcshaders.core.chain.ChainProblem;
 import net.cyberpunk042.mcshaders.core.chain.ChainValidator;
@@ -73,6 +76,12 @@ public final class ShaderCheck {
         List<String> compileFailures = new ArrayList<>();
         int sound = 0;
         int withErrors = 0;
+        // Tallied as they are printed, not as they are found, so the totals always
+        // reconcile with the lines above them. In quiet mode the INFO lines are not
+        // printed and so are not counted, which is the honest answer to "how many
+        // findings does this report have".
+        Map<LayoutMismatch.Severity, Integer> printed =
+                new EnumMap<>(LayoutMismatch.Severity.class);
 
         for (Path file : chains) {
             String name = file.getFileName().toString().replaceFirst("\\.json$", "");
@@ -85,6 +94,7 @@ public final class ShaderCheck {
             } catch (RuntimeException e) {
                 System.out.println("### " + name);
                 System.out.println("    UNREADABLE: " + e.getMessage());
+                printed.merge(LayoutMismatch.Severity.ERROR, 1, Integer::sum);
                 withErrors++;
                 continue;
             }
@@ -101,14 +111,16 @@ public final class ShaderCheck {
             System.out.println("### " + name);
             // Several passes in a chain routinely share one include, and so report the
             // same finding. Print each once: a repeated line is not more evidence.
-            for (String line : distinct(problems)) {
-                System.out.println(line);
+            for (ChainProblem problem : distinct(problems)) {
+                System.out.println(render(problem));
+                printed.merge(problem.severity(), 1, Integer::sum);
             }
         }
 
         reportOrphans(reached);
         reportCompilation(compileFailures);
         System.out.printf("%n%d chain(s): %d sound, %d with errors%n", chains.size(), sound, withErrors);
+        reportTotals(printed);
         return withErrors == 0 && compileFailures.isEmpty() ? 0 : 1;
     }
 
@@ -254,14 +266,35 @@ public final class ShaderCheck {
         return out;
     }
 
-    private List<String> distinct(List<ChainProblem> problems) {
-        Set<String> seen = new LinkedHashSet<>();
+    private List<ChainProblem> distinct(List<ChainProblem> problems) {
+        Map<String, ChainProblem> seen = new LinkedHashMap<>();
         for (ChainProblem p : problems) {
             if (quiet && p.severity() == LayoutMismatch.Severity.INFO) {
                 continue;
             }
-            seen.add("    " + p.severity() + " " + p.kind() + ": " + p.detail());
+            seen.putIfAbsent(render(p), p);
         }
-        return List.copyOf(seen);
+        return List.copyOf(seen.values());
+    }
+
+    private static String render(ChainProblem problem) {
+        return "    " + problem.severity() + " " + problem.kind() + ": " + problem.detail();
+    }
+
+    /**
+     * One line totalling the findings printed above.
+     *
+     * <p>Without it, checking a report against a previous run means reading several
+     * hundred lines and counting. Re-running this tool against a tree it has been run
+     * on before is the normal way to use it — that is what makes a report worth
+     * keeping — and a run that has drifted should be one line's difference to notice,
+     * not a paragraph's.
+     */
+    private static void reportTotals(Map<LayoutMismatch.Severity, Integer> printed) {
+        int errors = printed.getOrDefault(LayoutMismatch.Severity.ERROR, 0);
+        int warnings = printed.getOrDefault(LayoutMismatch.Severity.WARNING, 0);
+        int infos = printed.getOrDefault(LayoutMismatch.Severity.INFO, 0);
+        System.out.printf("%d finding(s) above: %d error, %d warning, %d info%n",
+                errors + warnings + infos, errors, warnings, infos);
     }
 }

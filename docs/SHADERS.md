@@ -167,7 +167,14 @@ cd check && ../gradlew run --args="/path/to/assets"
 It reads text, needs no GPU and no game, exits non-zero on errors, and is published
 separately as `mcshaders-check` so you can run it in CI without cloning this repo.
 
-**What it cannot tell you:** whether the GLSL compiles. That needs a driver.
+**It compiles the GLSL as well**, where `glslangValidator` is on the path. That was
+once listed here as the thing it could not do; it needs a compiler, but — as it turned
+out — no driver and no GPU. Where the validator is missing the check still runs and says
+which part it skipped. CI installs `glslang-tools` and fails if the binary will not run,
+so this is not an optional half.
+
+It ends with a line totalling the findings above it, which is what makes a second run
+against the same tree a diff rather than a read.
 
 ## How far this has actually got
 
@@ -178,7 +185,7 @@ pass" and "it works" are very different claims here:
 
 | | State |
 |---|---|
-| The framework (looks, conditions, merging, easing) | **Tested.** 585 tests, no Minecraft needed |
+| The framework (looks, conditions, merging, easing) | **Tested.** 736 tests, no Minecraft needed — 471 core + 220 api + 45 check, counted 2026-08-25 |
 | Datapack loading and `/reload` | **Written, compile-verified.** Never observed loading a file |
 | Fog reaching the frame | **Written, compile-verified.** Never observed changing a pixel |
 | The in-game editor | **Compiles.** The screens have never been opened |
