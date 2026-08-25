@@ -114,11 +114,18 @@ class ApiSurfaceTest {
                     if (isVisible(method.getModifiers())) {
                         referenced.add(method.getReturnType());
                         referenced.addAll(List.of(method.getParameterTypes()));
+                        // A consumer catching a declared exception needs its class
+                        // at compile scope like any other. No public member in this
+                        // module declares one, so this is a guard rather than a
+                        // checked path; the mechanism itself is exercised by check's
+                        // copy of this test, where two do.
+                        referenced.addAll(List.of(method.getExceptionTypes()));
                     }
                 }
                 for (Constructor<?> constructor : type.getDeclaredConstructors()) {
                     if (isVisible(constructor.getModifiers())) {
                         referenced.addAll(List.of(constructor.getParameterTypes()));
+                        referenced.addAll(List.of(constructor.getExceptionTypes()));
                     }
                 }
                 for (Field field : type.getDeclaredFields()) {
