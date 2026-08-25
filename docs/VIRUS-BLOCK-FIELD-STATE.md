@@ -150,6 +150,25 @@ sibling shape's type (the interface's own javadoc says "each shape type has its 
 implementation", and a sphere cannot have a torus cage); infer it from which fields are
 present; or require an explicit `type` and migrate the content.
 
+Two of those three have since been measured, which narrows the decision without making
+it. `core/src/test/java/.../FillDefaultsTest.java` holds the measurements.
+
+*Inference from field names resolves this corpus, uniquely.* Every cage in the six files
+is one of two shapes — `{latitudeCount, longitudeCount, showEquator, showPoles}` in
+`cage_dense` and `cage_globe`, and `{latitudeCount, longitudeCount}` in `default`,
+`points`, `thick_wire` and `thin_wire`. `SphereCageOptions` is the only implementation
+carrying `latitudeCount` at all, so each names exactly one candidate. But it is not a
+general rule: **`PrismCageOptions` and `CylinderCageOptions` have identical components**
+(`horizontalRings, lineWidth, showCaps, showEdges, verticalLines`), so a cage of that
+shape names both and inference has nothing left to choose with. Adopting it means
+adopting a rule that reads today's content and has one known, reachable failure — a
+tradeoff, not a defect, and the operator's to weigh.
+
+*The sibling-shape candidate has nothing to read here.* A `field_fills` file is a whole
+`FillConfig` and nothing else; the fill is applied to a primitive later, so a standalone
+preset names no shape to take the type from. That candidate can only work where a fill
+is nested inside a primitive, which is not how these six files are written.
+
 **The depth six.** `FillConfig.depthTest` and `depthWrite` carry no omission directives,
 and **every file that omits one omits both** — so annotating only `depthTest` moves
 nothing. `depthTest` is `true` in all six of the record's constants, which makes its
@@ -158,6 +177,13 @@ constant sets it `true`, so its default is *conditional on `mode`*, which the an
 vocabulary has no way to express. All six of the omitting files happen to be `WIREFRAME`
 or `CAGE`, so a flat `true` would read this corpus correctly and quietly misread a
 future solid fill.
+
+That was filed as a question about the file format. It is not only that: **core already
+answers it twice, and differently.** `FillConfig.builder().mode(SOLID).build()` yields
+`depthWrite=true`; the `FillConfig.SOLID` constant yields `false`. Two ways of asking
+core for a solid fill disagree, so the format decision is not "invent a default" but
+"core holds two — which is authoritative". (`depthTest` has no such split, which is why
+only one of the pair is open.)
 
 ## `field_animations`: a decision the codec already made, meeting content
 
@@ -223,11 +249,15 @@ Ordered by what they cost to resolve:
 
 1. **`field_animations` (26 files)** is the cheapest large win and needs only a choice
    between two spelled-out options, both of which leave the writer alone.
-2. **`field_fills` depth (6 files)** needs one decision — accept a flat `depthWrite`
-   default that is wrong for solid fills, or give the annotation vocabulary a
-   conditional default.
+2. **`field_fills` depth (6 files)** needs one decision, and it is now a narrower one:
+   core's builder and its `SOLID` constant already disagree about an unspecified
+   `depthWrite`, so the choice is which of core's two existing answers is authoritative
+   — or, still, a conditional default the annotation vocabulary cannot yet express.
 3. **`field_fills` cage (6 files)** needs the discriminator question answered before any
-   code is written.
+   code is written. Of the three candidates, inference from field names is measured to
+   resolve all six files uniquely while carrying one reachable failure
+   (prism and cylinder are field-identical), and the sibling-shape candidate is measured
+   not to apply to a standalone preset at all.
 4. **`field_links` (9 files)** is an alias plus a type change, so it is a content
    migration or a model change, not an annotation.
 5. **`field_arrangements` (62 files)** is the largest count and the least examined; the
