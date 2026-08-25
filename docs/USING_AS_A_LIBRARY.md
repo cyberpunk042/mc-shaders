@@ -294,9 +294,9 @@ for (ChainProblem problem : validator.validate(chain)) {
 
 It catches a shader that moved, an include that no longer resolves, a target read
 before anything wrote it, a target nothing reads, an input whose sampler the shader
-does not declare, and any uniform block the two sides disagree about. What it
-cannot tell you is whether the GLSL compiles — which is worth knowing, and is not
-usually what is wrong.
+does not declare, and any uniform block the two sides disagree about. It compiles the
+GLSL too, where `glslangValidator` is on the path — worth knowing, and not usually what
+is wrong.
 
 ## Describing what is tunable
 

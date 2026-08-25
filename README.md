@@ -18,7 +18,7 @@ world conditions, and eased between — with no Java and no GLSL.
 >
 > **Everything is built and tested. Nothing has been run in a game.**
 >
-> The framework has 585 tests. CI compiles the mod against the real Minecraft 26.2 jar
+> The framework has 736 tests (471 core + 220 api + 45 check, counted 2026-08-25). CI compiles the mod against the real Minecraft 26.2 jar
 > on both loaders, so every API call in it exists — that part is read from source, not
 > guessed. But **a mixin that compiles has not been shown to apply, and an event that
 > compiles has not been shown to fire.** Fog reaching the screen, `/reload` loading a
@@ -188,7 +188,10 @@ cd check && ../gradlew run --args="/path/to/assets"
 Reads text, needs no GPU, exits non-zero on errors so it can gate a build. Published as
 `mcshaders-check` so it can run in someone else's CI without cloning this repo.
 
-It cannot tell you whether the GLSL compiles. That needs a driver.
+It compiles the GLSL too, where `glslangValidator` is on the path — that turned out to
+need a compiler but not a driver, and not a GPU. Without it the check still runs and says
+so. It ends with a totals line, so re-running it against a tree you have a report for is
+one line to compare.
 
 ## Documentation
 
