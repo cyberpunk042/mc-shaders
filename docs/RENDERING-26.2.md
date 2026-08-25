@@ -445,6 +445,15 @@ that a wrong signature here costs a CI round-trip apiece, and reading cost none.
 The same table is therefore safe to build on. The list of what did *not* change is
 proven by the same run.
 
+**What is not on that list: anything that scrolls.** Every entry above places a
+widget at a fixed position, which is why `SchemaScreen` is a fixed list — and why a
+schema taller than the window has rows nothing can reach (see ROADMAP M1.13 for the
+numbers). Jade has screens with scrolling content, so the widget and its 26.2
+signature can be established the same way the rest of this table was: by reading
+`snownee/jade/gui/` again, for that specifically. Until then the container is
+unestablished, and building one from memory is exactly the mistake the first row of
+the table exists to prevent.
+
 ## What replaced immediate mode: the feature rendering system
 
 **Source.** The same NeoForged 26.2 primer, read again for this specifically, plus a

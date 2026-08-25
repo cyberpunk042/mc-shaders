@@ -172,6 +172,30 @@ same as their looking right. That needs someone to open them. And the mod regist
 no effects of its own yet, so on a fresh install the empty-state screen is the
 correct result rather than a failure.
 
+**Also not done by this — and this part did not need opening.** The screen lays
+parameters out as one fixed vertical list and does not scroll, so a schema taller
+than the window has controls placed below it that nothing can reach, with the footer
+drawn across whichever row it lands on. That is arithmetic, so `SchemaLayout` in
+`core` now holds it and `FieldVisualLayoutTest` measures the real schemas against it:
+
+| schema | rows | window it needs | reachable at 360 px | at 1080 px |
+|---|---:|---:|---:|---:|
+| `ENERGY_ORB` | 81 | 2000 px | 8 of 62 params | 31 of 62 |
+| `GEODESIC` | 17 | 464 px | 9 of 13 params | all 13 |
+
+Those are GUI pixels, which Minecraft divides out of the window by the GUI scale —
+1920×1080 at scale 3 is 640×360, and 1080 GUI pixels already assumes scale 1 on a
+1080-tall window. The energy-orb schema therefore fits only on a display at least
+2000 pixels tall with the scale forced to 1: a 4K screen, at a size where the text
+is unreadable. Everywhere else it is cut off, and so is the small schema at the
+ordinary size.
+
+This is the M1.13 defect one layer up. The schema-to-control link was verified — add
+a parameter and its control appears. The control-to-window link was not, and it is
+the one that decides whether a person can touch the parameter. What closes it —
+scrolling, pages, collapsing groups — is a design decision and is not made here; the
+measurements exist so that whatever is chosen has something to be checked against.
+
 **Both loaders now, as of the `vanilla/` module.** The three screens and the
 choose-which-screen logic moved to `vanilla/`; only binding a key stayed per-loader,
 because that genuinely differs. On NeoForge the mapping and its category register
