@@ -1,4 +1,4 @@
-package net.cyberpunk042.mcshaders;
+package net.cyberpunk042.mcshaders.check;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,26 +22,31 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 /**
- * What a consumer of {@code mcshaders-api} can actually compile against.
+ * What a consumer of {@code mcshaders-check} can actually compile against.
  *
- * <p>This module is published as the artifact other mods build on, and the
- * {@code api} / {@code implementation} split in its build script decides what reaches
- * them: an {@code api} dependency lands in the POM at compile scope, an
- * {@code implementation} one at runtime scope. So a type that appears in a public
- * signature while its dependency is {@code implementation} is unreachable — the
- * consumer sees the method and cannot call it.
+ * <p>The third module to get this test, and the one where it found the most. An
+ * {@code api} dependency lands in the published POM at compile scope and an
+ * {@code implementation} one at runtime scope, so a type in a public signature whose
+ * dependency is {@code implementation} is a method the consumer can see and cannot
+ * call.
  *
- * <p>That was the state until this test existed. Three methods —
- * {@code FieldCodec.write}, {@code BindingCodec.write}, {@code BindingCodec.writeAll} —
- * return {@code JsonObject} or {@code JsonArray}, while gson was declared
- * {@code implementation} on the stated reasoning that parsing is "not something
- * consumers compile against". Compiling the example on line 613 of
- * {@code USING_AS_A_LIBRARY.md} against only what the artifact exposes fails with
- * {@code cannot access JsonObject}; adding gson to that classpath compiles it. The
- * declaration is now {@code api}, and this keeps the two in step.
+ * <p>Gson was {@code implementation} here on the same reasoning that had it that way
+ * in {@code common} — parsing is this module's job, not the consumer's. But
+ * {@code PostChainCodec.read(JsonObject)} is public, and that is worse than the three
+ * leaking methods in {@code common} were: <strong>javac resolves the whole overload
+ * set</strong>, so a consumer calling the gson-free-looking
+ * {@code PostChainCodec.read(Reader)} fails with {@code cannot access JsonObject} too.
+ * Both halves of this module's only entry point were uncompilable against its own POM.
+ * Adding gson to that classpath compiles both. The declaration is now {@code api}.
  *
- * <p>Nothing here needs the game or the network: it reads this module's own sources to
- * find its public types, then asks the classes themselves what they expose.
+ * <p>The scan reads exception types as well as returns, parameters and fields — a
+ * consumer catching a declared exception needs its class at compile scope like any
+ * other. It finds nothing here today; it is included so that it cannot start to.
+ *
+ * <p>This module is also a command-line tool, and that use is unaffected either way:
+ * the distribution carries its own dependencies. It is the {@code maven-publish} half
+ * — the one that declares {@code api("net.cyberpunk042:mcshaders-core")} and so offers
+ * itself as a library — that this is about.
  */
 class ApiSurfaceTest {
 
@@ -57,26 +62,29 @@ class ApiSurfaceTest {
         return packageName.startsWith("java.")
                 || packageName.startsWith("javax.")
                 || packageName.startsWith("net.cyberpunk042.")
-                || packageName.equals("com.google.gson");
+                || packageName.startsWith("org.joml")
+                || packageName.startsWith("com.google.gson");
     }
 
     /**
      * This module's directory, from wherever the test was launched.
      *
      * <p>Gradle runs tests with the project directory as the working directory, so the
-     * first candidate hits. Run from the repository root instead — which is how the
-     * javac harness in this repo does it — and {@code common/} is where to look.
+     * first candidate hits. Run from the repository root and {@code check/} is where
+     * to look.
      */
     private static Path moduleRoot() {
         for (Path dir = Path.of("").toAbsolutePath(); dir != null; dir = dir.getParent()) {
-            for (Path candidate : List.of(dir, dir.resolve("common"))) {
+            for (Path candidate : List.of(dir, dir.resolve("check"))) {
                 if (Files.isDirectory(candidate.resolve(SOURCES))
-                        && Files.isRegularFile(candidate.resolve("build.gradle.kts"))) {
+                        && Files.isRegularFile(candidate.resolve("build.gradle.kts"))
+                        && Files.isDirectory(candidate.resolve(SOURCES)
+                                .resolve("net/cyberpunk042/mcshaders/check"))) {
                     return candidate;
                 }
             }
         }
-        throw new AssertionError("could not find the common module root from "
+        throw new AssertionError("could not find the check module root from "
                 + Path.of("").toAbsolutePath());
     }
 
@@ -111,9 +119,8 @@ class ApiSurfaceTest {
                 refs.add(method.getReturnType());
                 refs.addAll(List.of(method.getParameterTypes()));
                 // A consumer catching a declared exception needs its class at compile
-                // scope like any other. No public member in this module declares one,
-                // so this is a guard rather than a checked path; the mechanism itself
-                // is exercised by check's copy of this test, where two do.
+                // scope like any other. Two public members here declare one, which is
+                // what theScanReadsThrowsClauses covers.
                 refs.addAll(List.of(method.getExceptionTypes()));
             }
         }
@@ -162,22 +169,21 @@ class ApiSurfaceTest {
         }
 
         assertTrue(leaks.isEmpty(),
-                () -> "these appear in mcshaders-api's public API but are not reachable by "
+                () -> "these appear in mcshaders-check's public API but are not reachable by "
                         + "a consumer compiling against it — either expose the dependency "
                         + "with `api(...)` or keep the type out of the signature:\n  "
                         + String.join("\n  ", leaks));
     }
 
     @Test
-    @DisplayName("gson is exposed as api, since the public API hands its types back")
+    @DisplayName("gson is exposed as api, since the entry point takes its types")
     void gsonIsDeclaredApi() {
         String build = read(moduleRoot().resolve("build.gradle.kts"));
 
         assertTrue(build.contains("api(\"com.google.code.gson:gson:"),
-                "FieldCodec.write and BindingCodec.write return gson types, so gson has to "
-                        + "reach consumers at compile scope. Under `implementation` it lands "
-                        + "in the POM at runtime scope and the documented example does not "
-                        + "compile.");
+                "PostChainCodec.read takes a JsonObject, so gson has to reach consumers at "
+                        + "compile scope. Under `implementation` it lands in the POM at "
+                        + "runtime scope and neither read overload compiles.");
         assertFalse(build.contains("implementation(\"com.google.code.gson:gson:"),
                 "declaring gson both ways would leave which scope wins to Gradle rather "
                         + "than to this file");
@@ -185,23 +191,42 @@ class ApiSurfaceTest {
 
     @Test
     @DisplayName("the leak this test was written for is the one it would still catch")
-    void theCodecReturnTypesAreStillTheReason() {
-        Set<String> gsonReturning = new LinkedHashSet<>();
+    void theEntryPointIsStillTheReason() {
+        Set<String> gsonFacing = new LinkedHashSet<>();
         for (Class<?> type : publicTypes(moduleRoot())) {
             for (Method method : type.getDeclaredMethods()) {
-                if (isVisible(method.getModifiers())
-                        && method.getReturnType().getPackageName().equals("com.google.gson")) {
-                    gsonReturning.add(type.getSimpleName() + "." + method.getName());
+                if (!isVisible(method.getModifiers())) {
+                    continue;
+                }
+                List<Class<?>> named = new ArrayList<>();
+                named.add(method.getReturnType());
+                named.addAll(List.of(method.getParameterTypes()));
+                named.addAll(List.of(method.getExceptionTypes()));
+                if (named.stream().anyMatch(c -> c.getPackageName().startsWith("com.google.gson"))) {
+                    gsonFacing.add(type.getSimpleName() + "." + method.getName());
                 }
             }
         }
 
         // If this ever empties, gson stopped being part of the API and the `api`
         // declaration above is no longer carrying its weight.
-        assertEquals(Set.of("FieldCodec.write", "BindingCodec.write", "BindingCodec.writeAll"),
-                gsonReturning,
-                "the set of public methods returning a gson type changed; the build script's "
-                        + "reasoning names exactly these three");
+        assertEquals(Set.of("PostChainCodec.read"), gsonFacing,
+                "the set of public methods naming a gson type changed; the build script's "
+                        + "reasoning names exactly this one");
+    }
+
+    @Test
+    @DisplayName("the scan reads throws clauses, not only returns and parameters")
+    void theScanReadsThrowsClauses() {
+        // The exception half of the scan cannot be shown by a leak: each module here
+        // has one external dependency and all of them are `api`, so there is no
+        // unreachable type on the compile classpath to declare in a throws clause.
+        // This shows the mechanism instead — delete the getExceptionTypes lines and
+        // this fails, which is what makes the same two lines in core's and common's
+        // copies mean something.
+        assertTrue(exposedBy(PostChainCodec.class).contains(IOException.class),
+                "PostChainCodec.read declares `throws IOException`, so the scan should "
+                        + "have collected it");
     }
 
     private static String read(Path file) {

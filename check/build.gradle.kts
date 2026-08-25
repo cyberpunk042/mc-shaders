@@ -29,7 +29,13 @@ dependencies {
 
     // The dependency core is not allowed: this module exists precisely so that
     // parsing lives outside the engine. See docs/PORTING.md.
-    implementation("com.google.code.gson:gson:2.11.0")
+    //
+    // `api` rather than `implementation`, because the entry point takes a gson type:
+    // `PostChainCodec.read(JsonObject)`. Under `implementation` gson lands in the
+    // published POM at runtime scope, and a consumer cannot compile a call to EITHER
+    // overload — javac resolves the whole overload set, so even `read(Reader)` fails
+    // with `cannot access JsonObject`. ApiSurfaceTest holds this.
+    api("com.google.code.gson:gson:2.11.0")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
@@ -43,6 +49,13 @@ application {
 tasks.test {
     useJUnitPlatform()
     testLogging { events("failed") }
+
+    // ApiSurfaceTest asserts this very file declares gson as `api`. Gradle does not
+    // treat a build script as an input to the tests it configures, so without this the
+    // task goes UP-TO-DATE across exactly the edit the assertion exists to catch.
+    inputs.file("build.gradle.kts")
+        .withPropertyName("buildScriptAsText")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 publishing {
