@@ -48,19 +48,20 @@ tasks.test {
     useJUnitPlatform()
     testLogging { events("passed", "skipped", "failed") }
 
-    // Four tests here read files out of the repository rather than the classpath: the
-    // shipped pack, and the documented examples that ReadmeExampleTest and
-    // BindingFormatDocTest parse straight out of the pages. None of those are inputs
-    // Gradle can infer, so editing a page and running the tests would report green
-    // without having re-read it — the one case the doc tests exist for.
+    // Several tests here read files out of the repository rather than the classpath:
+    // the shipped pack, and the pages that ReadmeExampleTest, BindingFormatDocTest,
+    // VersionMatrixDocTest and the rest parse straight out of the document. None of
+    // those are inputs Gradle can infer, so editing a page and running the tests would
+    // report green without having re-read it — the one case the doc tests exist for.
+    //
+    // docs/ is taken whole rather than named file by file: StatedTestCountsTest scans
+    // every page for a test count, so any of them can be the one that fails, including
+    // a page added after this line was written.
     inputs.files(
         rootProject.fileTree("datapack"),
         rootProject.file("README.md"),
         rootProject.file("CONTRIBUTING.md"),
-        rootProject.file("docs/SHADERS.md"),
-        rootProject.file("docs/BINDINGS.md"),
-        rootProject.file("docs/USING_AS_A_LIBRARY.md"),
-        rootProject.file("docs/VERSIONS.md"),
+        rootProject.fileTree("docs") { include("*.md") },
         rootProject.file("gradle.properties"),
         rootProject.file("core/gradle.properties"),
         rootProject.file("common/build.gradle.kts"),
