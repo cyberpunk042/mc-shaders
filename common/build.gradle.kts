@@ -56,6 +56,7 @@ tasks.test {
     inputs.files(
         rootProject.fileTree("datapack"),
         rootProject.file("README.md"),
+        rootProject.file("CONTRIBUTING.md"),
         rootProject.file("docs/SHADERS.md"),
         rootProject.file("docs/BINDINGS.md"),
         rootProject.file("docs/USING_AS_A_LIBRARY.md"),
