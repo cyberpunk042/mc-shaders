@@ -18,12 +18,26 @@ dependencies {
     // declaration is valid on its own terms and readable without knowing that.
     api("net.cyberpunk042:mcshaders-core:$coreVersion")
 
-    // `implementation`, not `api`: parsing is this module's business, not something
-    // consumers compile against. It costs nothing at runtime under a loader —
-    // Minecraft already provides gson, which is checked rather than assumed: Jade
-    // imports com.google.gson in two files and declares no gson dependency.
+    // `api`, not `implementation`, because three public methods hand a gson type
+    // back: FieldCodec.write, BindingCodec.write and BindingCodec.writeAll all
+    // return JsonObject or JsonArray. That makes gson part of what consumers compile
+    // against whether or not this module wants it to be.
+    //
+    // It used to say `implementation`, reasoning that "parsing is this module's
+    // business, not something consumers compile against". The surface disagreed:
+    // under `implementation` gson lands in the published POM at runtime scope, so a
+    // consumer of mcshaders-api could not compile the example on line 613 of
+    // USING_AS_A_LIBRARY.md — `javac` fails with "cannot access JsonObject". Adding
+    // gson to that classpath fixes it, which is the whole proof.
+    //
+    // ApiSurfaceTest pins this: gson is the only non-JDK, non-project package in the
+    // public API, and it must be declared here as `api`.
+    //
+    // Still true, and still the reason a runtime dependency costs nothing under a
+    // loader: Minecraft already provides gson — checked rather than assumed, since
+    // Jade imports com.google.gson in two files and declares no gson dependency.
     // The version matches check/, which parses shader chains with the same library.
-    implementation("com.google.code.gson:gson:2.11.0")
+    api("com.google.code.gson:gson:2.11.0")
 
     testImplementation(platform("org.junit:junit-bom:5.11.4"))
     testImplementation("org.junit.jupiter:junit-jupiter")
