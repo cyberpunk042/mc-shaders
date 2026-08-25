@@ -143,6 +143,42 @@ print("unmatched:", sorted(p for p in params if p.lower() not in fieldset))
 EOF
 ```
 
+## What was built from it
+
+`FieldVisualSchemas` in `common` turns this measurement into two `EffectSchema`s — 62
+parameters in 19 groups for `ENERGY_ORB`, 13 in 4 for `GEODESIC` — so an editor has
+something to render. It closes the "no schema for these types" row in the table below.
+
+**Nothing registers them.** `BuiltinEffects` claims `mcshaders:fog` "and nothing else",
+and these are not this mod's effects; the effect type is an argument, and whoever owns
+the type registers it in their own namespace.
+
+**The presets are the authority, not the comments.** Every bound widens to admit every
+value the presets use, because the block's documented ranges are contradicted by its own
+content — `coreSize` says `0-1` and reaches 10, `intensity` says `0-2` and reaches 4.32.
+`geoAnimMode` is the same in another form: four modes enumerated, a fifth value shipped,
+which is why it is a slider and not a choice.
+
+That rule is easy to get half-right, and the first draft did. It widened only where a
+range was stated, so `v2CoronaBrightness` — comment default `0.15`, three presets at
+`1.0` — came out bounded `[0, 0.3]`. Nothing about the file looked wrong;
+`FieldVisualSchemasTest` caught it against the real presets.
+
+Where each bound comes from: **4** the block's comments, **31** the observed spread
+across presets, **40** placeholders spanning `[0, 2v]` where every preset agrees on one
+value and there is therefore no evidence of a limit at all.
+
+**Labels are mechanical on purpose.** The block describes 149 of its members and those
+would read better than `"Core Size"`. That mod is CC BY-ND-NC — *NoDerivatives* — so the
+numbers extracted from those comments are used and the sentences are not. The same
+author owns both repositories, so richer labels are theirs to permit.
+
+**One gap this surfaced in our own API:** `ControlKind` has no free-numeric-entry option.
+A scalar of genuinely unknown range cannot be described honestly, because `SLIDER` with
+`Bounds.NONE` renders as a control from 0 to 0 — which is why 40 parameters carry a
+placeholder span instead. A `NUMBER` kind would fix it, and is an API change rather than
+a correction.
+
 ## What it is evidence for
 
 The open question is whether fields in this repository are geometry or post-processing.
