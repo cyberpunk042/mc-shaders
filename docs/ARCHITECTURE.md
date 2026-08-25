@@ -48,8 +48,8 @@ says *"bind this shader program"*. Both a Vulkan and an OpenGL backend consume
 the identical graph.
 
 That is also why `core/` has zero Minecraft dependencies. It is not purity for
-its own sake — it is what lets the framework's 52 tests run on a plain JDK with
-no game, no GPU, and no network access to Minecraft's Maven hosts.
+its own sake — it is what lets `core`'s 471 tests (counted 2026-08-25) run on a
+plain JDK with no game, no GPU, and no network access to Minecraft's Maven hosts.
 
 ## The per-frame cycle
 
