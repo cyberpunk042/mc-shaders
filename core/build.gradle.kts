@@ -74,6 +74,16 @@ tasks.test {
     inputs.files(fileTree("src/test/java"))
         .withPropertyName("testSourcesAsText")
         .withPathSensitivity(PathSensitivity.RELATIVE)
+
+    // ApiSurfaceTest asserts this very file declares JOML as `api` rather than
+    // `implementation`, because the difference decides whether a consumer of the
+    // published artifact can call the methods that return a Vector3f. Gradle does not
+    // treat a build script as an input to the tests it configures, so without this the
+    // task goes UP-TO-DATE across exactly the edit the assertion exists to catch —
+    // demote the dependency and the build stays green having run nothing.
+    inputs.file("build.gradle.kts")
+        .withPropertyName("buildScriptAsText")
+        .withPathSensitivity(PathSensitivity.RELATIVE)
 }
 
 // Javadoc is published because this is a library other people read against.
