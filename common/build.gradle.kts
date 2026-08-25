@@ -59,6 +59,7 @@ tasks.test {
         rootProject.file("docs/SHADERS.md"),
         rootProject.file("docs/BINDINGS.md"),
         rootProject.file("docs/USING_AS_A_LIBRARY.md"),
+        rootProject.file("docs/VERSIONS.md"),
         rootProject.file("gradle.properties"),
         rootProject.file("core/gradle.properties"),
         rootProject.file("common/build.gradle.kts"),
