@@ -34,6 +34,14 @@ dependencies {
 
 Put `gpr.user` and `gpr.key` in `~/.gradle/gradle.properties`, never in the repo.
 
+`mcshaders-api` brings `mcshaders-core` and **gson** with it at compile scope. Gson is
+there because three of its methods hand you a gson type back — `FieldCodec.write`,
+`BindingCodec.write` and `BindingCodec.writeAll` all return a `JsonObject` or a
+`JsonArray` — so writing the example further down this page needs it. You do not have to
+declare it yourself; under a loader Minecraft provides it at runtime anyway.
+`ApiSurfaceTest` keeps that promise honest: gson is the only non-JDK, non-project package
+in the published API, and the build has to expose it.
+
 > **Nothing is published yet.** The publish job runs on a published GitHub release and
 > there has not been one, so those coordinates will not resolve today — and because the
 > repository requires a token to read, the failure looks like an authentication problem
